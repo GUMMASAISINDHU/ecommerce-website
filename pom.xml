@@ -23,6 +23,6 @@
           <version>8.0.0.M1</version>
         </plugin>
       </plugins>
+       </build>       
     </pluginManagement>
-  </build>
 </project> 
