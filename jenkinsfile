@@ -2,58 +2,37 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Setup Environment') {
             steps {
-                checkout scm
+                echo 'Setting up environment...'
+                
+                // Check if Maven is installed and install if necessary
+                script {
+                    if (!commandExists('mvn')) {
+                        echo 'Maven not found, installing...'
+                        // Install Maven (you can customize the installation process based on your system)
+                        // Example for a Debian/Ubuntu-based system:
+                        sh 'sudo apt-get update && sudo apt-get install -y maven'
+                    } else {
+                        echo 'Maven is already installed'
+                    }
+                }
             }
         }
         
-        stage('Build and Test (Dev)') {
+        stage('Build and Test with Maven') {
             steps {
-                echo 'Building and testing code in Dev environment...'
-                // Add your build and test commands here
-            }
-        }
-        
-        stage('Deploy to UAT') {
-            when {
-                // Define conditions for proceeding to UAT
-                // Example: Only continue if the Dev build and test were successful
-                expression {
-                    currentBuild.result == 'SUCCESS'
-                }
-            }
-            steps {
-                echo 'Deploying to UAT environment...'
-                // Add your deployment commands to UAT here
-            }
-        }
-
-        stage('Test (UAT)') {
-            steps {
-                echo 'Testing code in UAT environment...'
-                // Add your test commands for UAT here
-            }
-        }
-
-        stage('Deploy to Production') {
-            when {
-                // Define conditions for proceeding to production
-                // Example: Only continue if UAT testing was successful
-                expression {
-                    currentBuild.result == 'SUCCESS'
-                }
-            }
-            steps {
-                echo 'Deploying to Production environment...'
-                // Add your deployment commands to production here
+                echo 'Building and testing project with Maven...'
+                
+                // Run Maven build and test commands
+                // Specify the goals you want to execute, such as 'clean install'
+                sh 'mvn clean install'
             }
         }
     }
 
     post {
         always {
-            // Define any cleanup or notification steps here
             echo 'Pipeline execution completed'
         }
         success {
@@ -63,4 +42,8 @@ pipeline {
             echo 'Pipeline failed'
         }
     }
+}
+
+def commandExists(String command) {
+    return sh(script: "command -v $command", returnStatus: true) == 0
 }
