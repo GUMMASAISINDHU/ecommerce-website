@@ -2,40 +2,58 @@ pipeline {
     agent any
 
     environment {
-        // Define environment variables
-        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-11.0.23.0.9-3.el9.x86_64"  // Path to Java 11
-        MAVEN_HOME = "/usr/share/maven" // Path to Maven
+        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-11.0.23.0.9-3.el9.x86_64"
+        MAVEN_HOME = "/usr/share/maven"
     }
 
+    // Define the parameters block
     parameters {
-        // Define input parameters for the pipeline
-        choice(
-            name: 'ENVIRONMENT',
-            choices: ['dev', 'uat', 'prod'],
-            description: 'Select the target environment: dev, uat, or prod.'
-        )
         choice(
             name: 'BRANCH',
-            choices: ['master', 'development', 'feature branch'],
-            description: 'Select the branch to build from: main, development, or feature branch.'
+            choices: readFile('branch.txt').split('\n').collect { it.trim() },
+            description: 'Select the branch to build from the available branches.'
         )
     }
 
     stages {
-        stage('Checkout') {
+        stage('Fetch Remote Branches') {
             steps {
-                echo 'Checking out the code...'
-                // Checkout the selected branch
-                checkout([$class: 'GitSCM', branches: [[name: "refs/heads/${params.BRANCH}"]],
-                          doGenerateSubmoduleConfigurations: false,
-                          extensions: [],
-                          userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/demo-java11.git']]])
+                script {
+                    // Checkout the repository
+                    checkout([
+                        $class: 'GitSCM',
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/GUMMASAISINDHU/demo-java11.git',
+                            credentialsId: '88b92039-366f-4db0-910b-f0f4187c7492'
+                        ]],
+                        branches: [[name: 'refs/heads/master']]
+                    ])
+
+                    // Fetching remote branches and writing them to branch.txt
+                    sh 'git branch -r | awk \'{print $1}\' > branch.txt'
+                }
+            }
+        }
+
+        stage('Checkout SCM') {
+            steps {
+                script {
+                    // Checkout the code for the chosen branch
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "refs/heads/${params.BRANCH}"]],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/GUMMASAISINDHU/demo-java11.git',
+                            credentialsId: '88b92039-366f-4db0-910b-f0f4187c7492'
+                        ]]
+                    ])
+                }
             }
         }
 
         stage('Build and Test') {
             steps {
-                echo "Building and testing the project for environment: ${params.ENVIRONMENT}..."
+                echo "Building and testing the project..."
                 sh "${MAVEN_HOME}/bin/mvn clean install"
                 sh "${MAVEN_HOME}/bin/mvn test"
             }
@@ -43,20 +61,15 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo "Deploying the project to ${params.ENVIRONMENT} environment..."
-                // Add your deployment commands here. For example:
-                sh "${MAVEN_HOME}/bin/mvn deploy -P${params.ENVIRONMENT}"
+                echo "Deploying the project..."
+                sh "${MAVEN_HOME}/bin/mvn deploy"
             }
         }
     }
 
     post {
         always {
-            // This block runs at the end of the pipeline regardless of the outcome
-            // Collect test reports (if tests were run)
-            junit 'target/surefire-reports/**/*.xml' // Collect and report test results
-
-            // Archive artifacts (if needed)
+            junit 'target/surefire-reports/**/*.xml'
             archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
         }
 
@@ -69,4 +82,3 @@ pipeline {
         }
     }
 }
-
