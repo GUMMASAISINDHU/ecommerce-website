@@ -1,13 +1,25 @@
-package io.buildpacks.example.sample;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class SampleApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(SampleApplication.class, args);
-	}
-
+pipeline {
+    agent any
+ 
+    parameters {
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Commit ID to build')
+    }
+ 
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git branch: 'master', credentialsId: 'e1136500-62bb-40e1-b58a-12b61954b6fe', url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                    checkout([$class: 'GitSCM', branches: [[name: "refs/heads/master"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'your_credentials_id', url: 'https://github.com/your/repository.git']]])
+                    sh "git reset --hard ${params.COMMIT_ID}"
+                }
+            }
+        }
+ 
+        stage('Build') {
+            steps {
+                // Your build steps
+            }
+        }
+    }
 }
