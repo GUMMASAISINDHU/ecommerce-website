@@ -1,13 +1,23 @@
-package io.buildpacks.example.sample;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class SampleApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(SampleApplication.class, args);
-	}
-
+pipeline {
+    agent any
+ 
+    parameters {
+        gitParameter(branchFilter: '.*', defaultValue: 'master', description: 'Select a branch', name: 'COMMIT_ID', type: 'Branch')
+    }
+ 
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git branch: "${params.COMMIT_ID}", credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f', url: 'https://github.com/your/repository.git'
+                }
+            }
+        }
+ 
+        stage('Build') {
+            steps {
+                // Your build steps
+            }
+        }
+    }
 }
