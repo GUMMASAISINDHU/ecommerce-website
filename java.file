@@ -1,22 +1,27 @@
 pipeline {
     agent any
- 
-    parameters {
-        gitParameter(branchFilter: '.*', defaultValue: 'master', description: 'Select a branch', name: 'COMMIT_ID', type: 'Branch')
+    options {
+        skipStagesAfterUnstable()
     }
- 
     stages {
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                script {
-                    git branch: "${params.COMMIT_ID}", credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f' url: 'https://github.com/your/repository.git'
+                sh 'mvn -B -DskipTests clean package'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
- 
-        stage('Build') {
+        stage('Deploy') { 
             steps {
-                // Your build steps
+                echo 'Deploying...' 
             }
         }
     }
