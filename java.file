@@ -9,7 +9,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    git branch: 'master', credentialsId: 'e1136500-62bb-40e1-b58a-12b61954b6fe', url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                    git branch: 'master', credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f', url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                     checkout([$class: 'GitSCM', branches: [[name: "refs/heads/master"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'your_credentials_id', url: 'https://github.com/your/repository.git']]])
                     sh "git reset --hard ${params.COMMIT_ID}"
                 }
