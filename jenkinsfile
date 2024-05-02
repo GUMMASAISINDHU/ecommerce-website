@@ -2,20 +2,15 @@ pipeline {
     agent any
  
     parameters {
-        extendedChoice(name: 'BRANCH', description: 'Select a branch', defaultValue: 'master', groovyScript: '["main", "develop"]')
-        string(name: 'COMMIT_ID', defaultValue: '', description: 'Enter the commit ID')
+        extendedChoice(name: 'BRANCH', description: 'Select a branch', defaultValue: 'master', groovyScript: '["master", "develop"]')
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Select a commit ID', visibleItemCount: 10)
     }
  
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    // If COMMIT_ID is not provided, get the latest commit ID from the selected branch
-                    if (params.COMMIT_ID == '') {
-                        env.GIT_COMMIT = sh(returnStdout: true, script: "git ls-remote https://github.com/GUMMASAISINDHU/ecommerce-website ${BRANCH}^{commit} | cut -f 1").trim()
-                    } else {
-                        env.GIT_COMMIT = params.COMMIT_ID
-                    }
+                    env.GIT_COMMIT = params.COMMIT_ID ?: sh(returnStdout: true, script: "git ls-remote https://github.com/GUMMASAISINDHU/ecommerce-website ${BRANCH}^{commit} | cut -f 1").trim()
                     git branch: "${BRANCH}", credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f', url: 'https://github.com/GUMMASAISINDHU/ecommerce-website', changelog: false, quiet: true, revision: "${env.GIT_COMMIT}"
                 }
             }
@@ -34,5 +29,3 @@ pipeline {
         }
     }
 }
-
-has context menu
