@@ -1,47 +1,36 @@
 pipeline {
-
     agent any
  
     parameters {
-
-        gitParameter(branch: 'origin/master', defaultValue: 'origin/master', description: 'Select a commit', name: 'COMMIT_ID')
-
+        extendedChoice(name: 'BRANCH', description: 'Select a branch', defaultValue: 'master', groovyScript: '["master", "develop"]')
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Enter the commit ID')
     }
  
     stages {
-
         stage('Checkout') {
-
             steps {
-
-                // Checkout the code from your Git repository using the selected commit
-
-                git branch: "${params.COMMIT_ID}", url: 'https://github.com/GUMMASAISINDHU/ecommerce-website'
-
+                script {
+                    // If COMMIT_ID is not provided, get the latest commit ID from the selected branch
+                    if (params.COMMIT_ID == '') {
+                        env.GIT_COMMIT = sh(returnStdout: true, script: "git ls-remote https://github.com/your/repository.git ${BRANCH}^{commit} | cut -f 1").trim()
+                    } else {
+                        env.GIT_COMMIT = params.COMMIT_ID
+                    }
+                    git branch: "${BRANCH}", credentialsId: 'your-credentials-id', url: 'https://github.com/your/repository.git', changelog: false, quiet: true, revision: "${env.GIT_COMMIT}"
+                }
             }
-
         }
-
         stage('Build') {
-
             steps {
-
                 sh 'mvn clean package'
-
             }
-
         }
-
     }
  
     post {
-
         success {
-
-            echo "Commit ID: ${params.COMMIT_ID}"
-
+            echo "Branch: ${BRANCH}"
+            echo "Commit ID: ${env.GIT_COMMIT}"
         }
-
     }
-
 }
