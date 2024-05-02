@@ -1,49 +1,48 @@
+[14:03] Pandari Mounika
 pipeline {
+
     agent any
+ 
+    parameters {
 
+        gitParameter(branch: 'origin/master', defaultValue: 'origin/master', description: 'Select a commit', name: 'COMMIT_ID')
+
+    }
+ 
     stages {
-        stage('Setup Environment') {
-            steps {
-                echo 'Setting up environment...'
-                
-                // Check if Maven is installed and install if necessary
-                script {
-                    if (!commandExists('mvn')) {
-                        echo 'Maven not found, installing...'
-                        // Install Maven (you can customize the installation process based on your system)
-                        // Example for a Debian/Ubuntu-based system:
-                        sh 'sudo apt-get update && sudo apt-get install -y maven'
-                    } else {
-                        echo 'Maven is already installed'
-                    }
-                }
-            }
-        }
-        
-        stage('Build and Test with Maven') {
-            steps {
-                echo 'Building and testing project with Maven...'
-                
-                // Run Maven build and test commands
-                // Specify the goals you want to execute, such as 'clean install'
-                sh 'mvn clean install'
-            }
-        }
-    }
 
+        stage('Checkout') {
+
+            steps {
+
+                // Checkout the code from your Git repository using the selected commit
+
+                git branch: "${params.COMMIT_ID}", url: 'https://github.com/your/repository.git'
+
+            }
+
+        }
+
+        stage('Build') {
+
+            steps {
+
+                sh 'mvn clean package'
+
+            }
+
+        }
+
+    }
+ 
     post {
-        always {
-            echo 'Pipeline execution completed'
-        }
-        success {
-            echo 'Pipeline completed successfully'
-        }
-        failure {
-            echo 'Pipeline failed'
-        }
-    }
-}
 
-def commandExists(String command) {
-    return sh(script: "command -v $command", returnStatus: true) == 0
+        success {
+
+            echo "Commit ID: ${params.COMMIT_ID}"
+
+        }
+
+    }
+
 }
