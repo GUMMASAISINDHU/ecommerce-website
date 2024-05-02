@@ -1,0 +1,48 @@
+[14:03] Pandari Mounika
+pipeline {
+
+    agent any
+ 
+    parameters {
+
+        gitParameter(branch: 'origin/master', defaultValue: 'origin/master', description: 'Select a commit', name: 'COMMIT_ID')
+
+    }
+ 
+    stages {
+
+        stage('Checkout') {
+
+            steps {
+
+                // Checkout the code from your Git repository using the selected commit
+
+                git branch: "${params.COMMIT_ID}", url: 'https://github.com/your/repository.git'
+
+            }
+
+        }
+
+        stage('Build') {
+
+            steps {
+
+                sh 'mvn clean package'
+
+            }
+
+        }
+
+    }
+ 
+    post {
+
+        success {
+
+            echo "Commit ID: ${params.COMMIT_ID}"
+
+        }
+
+    }
+
+}
