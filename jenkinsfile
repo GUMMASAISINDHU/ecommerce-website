@@ -1,4 +1,3 @@
-[14:03] Pandari Mounika
 pipeline {
 
     agent any
@@ -17,7 +16,7 @@ pipeline {
 
                 // Checkout the code from your Git repository using the selected commit
 
-                git branch: "${params.COMMIT_ID}", url: 'https://github.com/your/repository.git'
+                git branch: "${params.COMMIT_ID}", url: 'https://github.com/GUMMASAISINDHU/ecommerce-website'
 
             }
 
