@@ -1,22 +1,20 @@
 pipeline {
     agent any
- 
-    parameters {
-        gitParameter(branchFilter: '.*', defaultValue: 'master', description: 'Select a branch', name: 'COMMIT_ID', type: 'Branch')
-    }
- 
+
     stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    git branch: "${params.COMMIT_ID}", credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f', url: 'https://github.com/your/repository.git'
-                }
-            }
-        }
- 
         stage('Build') {
             steps {
-                // Your build steps
+                echo 'Building..'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing..'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying....'
             }
         }
     }
