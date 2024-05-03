@@ -1,32 +1,41 @@
 pipeline {
     agent any
-    
+ 
+    parameters {
+        extendedChoice(
+            name: 'GIT_COMMIT',
+            description: 'Select a Git commit',
+            type: 'PT_SINGLE_SELECT',
+            script: [
+                classpath: [],
+                sandbox: false,
+                script: '''
+                    def gitCommits = []
+                    def proc = "git log --pretty=format:'%h - %an, %ar : %s'".execute()
+                    proc.in.eachLine { line -> gitCommits << line }
+                    return gitCommits
+                '''
+            ]
+        )
+    }
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the Git repository
-                checkout scm
-                // Print the commit ID
-                echo "Building commit ID: ${env.GIT_COMMIT}"
+                // Checkout the code from your Git repository
+                git branch: "${params.GIT_COMMIT}", url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
             }
         }
         stage('Build') {
             steps {
-                // Your build steps go here
-                echo "Building the project..."
-            }
-        }
-        stage('Test') {
-            steps {
-                // Your test steps go here
-                echo "Running tests..."
-            }
-        }
-        stage('Deploy') {
-            steps {
-                // Your deploy steps go here
-                echo "Deploying the project..."
+                // Your build steps
             }
         }
     }
+    post {
+        always {
+            // Print the commit ID
+            echo "Commit ID: ${params.GIT_COMMIT}"
+        }
+    }
 }
+
