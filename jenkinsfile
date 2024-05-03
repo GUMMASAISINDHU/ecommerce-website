@@ -1,32 +1,32 @@
 pipeline {
     agent any
- 
-    parameters {
-        extendedChoice(name: 'BRANCH', description: 'Select a branch', defaultValue: 'master', groovyScript: '["master", "develop"]')
-        string(name: 'COMMIT_ID', defaultValue: '', description: 'Select a commit ID', visibleItemCount: 10)
-    }
- 
+    
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    env.GIT_COMMIT = params.COMMIT_ID ?: sh(returnStdout: true, script: "git ls-remote https://github.com/GUMMASAISINDHU/ecommerce-website ${BRANCH}^{commit} | cut -f 1").trim()
-                    git branch: "${BRANCH}", credentialsId: 'e5c0c497-b40e-49ee-a6fa-e3bbc251917f', url: 'https://github.com/GUMMASAISINDHU/ecommerce-website', changelog: false, quiet: true, revision: "${env.GIT_COMMIT}"
-                }
+                // Checkout the Git repository
+                checkout scm
+                // Print the commit ID
+                echo "Building commit ID: ${env.GIT_COMMIT}"
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                // Your build steps go here
+                echo "Building the project..."
+            }
+        }
+        stage('Test') {
+            steps {
+                // Your test steps go here
+                echo "Running tests..."
+            }
+        }
+        stage('Deploy') {
+            steps {
+                // Your deploy steps go here
+                echo "Deploying the project..."
             }
         }
     }
- 
-    post {
-        success {
-            echo "Branch: ${BRANCH}"
-            echo "Commit ID: ${env.GIT_COMMIT}"
-        }
-    }
 }
-
