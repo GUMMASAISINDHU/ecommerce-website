@@ -1,1 +1,17 @@
-file.txt
+pipeline {
+    agent any
+    
+    stages {
+        stage('Show Commit ID') {
+            steps {
+                echo "The current commit ID is: ${env.GIT_COMMIT}"
+            }
+        }
+        
+        stage('Other Stage') {
+            steps {
+                // Other steps for the stage
+            }
+        }
+    }
+}
