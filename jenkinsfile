@@ -1,6 +1,8 @@
 pipeline {
     agent any
-
+    tools{
+        maven 'local_maven'
+    }
     stages{
         stage ('Build'){
             steps{
@@ -12,12 +14,13 @@ pipeline {
                     archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
-            stage ('Deploy to tomcat server') {
-                steps{
-                    deploy adapters: [tomcat7(credentialsId: 'e1136500-62bb-40e1-b58a-12b61954b6fe', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war' 
-                }
+        }
+        stage ('Deploy to tomcat server') {
+            steps{
+                deploy adapters: [tomcat7(credentialsId: 'e1136500-62bb-40e1-b58a-12b61954b6fe', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war' 
             }
-     }
+        }
+    }
 }
     
     
