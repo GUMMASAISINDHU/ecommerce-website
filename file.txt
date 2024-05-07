@@ -2,15 +2,22 @@ pipeline {
     agent any
     
     stages {
-        stage('Show Commit ID') {
+        stage('Fetch Commits') {
             steps {
-                echo "The current commit ID is: ${env.GIT_COMMIT}"
-            }
-        }
-        
-        stage('Other Stage') {
-            steps {
-                // Other steps for the stage
+                script {
+                    // Fetch the latest commits
+                    def process = "git log --pretty=format:'%h' -n 5".execute() // Fetch the latest 5 commits
+                    def commitIds = []
+                    
+                    process.in.eachLine { line ->
+                        commitIds.add(line)
+                    }
+                    
+                    // Output the commit IDs
+                    println "Latest Commit IDs: ${commitIds.join('\n')}"
+                    
+                    // If you want to store the commit IDs as a build artifact or pass them to a later stage, you can do so here
+                }
             }
         }
     }
