@@ -7,7 +7,7 @@
  stages{
      stage('clone code'){
          steps{
-              git url: 'https://github.com/devopskroy/hello-world.
+              git url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.
 git'
          }
       }
