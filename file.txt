@@ -2,21 +2,30 @@ pipeline {
     agent any
     
     stages {
-        stage('Fetch Commits') {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+                        credentialsId: 'your-credentials-id' // Specify credentials if needed
+                    ]]
+                ])
+            }
+        }
+
+        stage('List Commits') {
             steps {
                 script {
-                    // Fetch the latest commits
-                    def process = "git log --pretty=format:'%h' -n 5".execute() // Fetch the latest 5 commits
-                    def commitIds = []
-                    
-                    process.in.eachLine { line ->
-                        commitIds.add(line)
-                    }
-                    
-                    // Output the commit IDs
-                    println "Latest Commit IDs: ${commitIds.join('\n')}"
-                    
-                    // If you want to store the commit IDs as a build artifact or pass them to a later stage, you can do so here
+                    // Jenkins provides the current revision in environment variables
+                    def currentCommitID = env.GIT_COMMIT
+                    println "Current Commit ID: $currentCommitID"
+
+                    // Fetch the latest commits using a git command within a shell
+                    sh '''
+                    git log --pretty=format:"%h - %s" -n 5
+                    '''
                 }
             }
         }
