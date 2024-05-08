@@ -2,18 +2,22 @@ pipeline {
     agent any
 
     parameters {
-        // Define a branch parameter that users can specify
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Enter the branch name to list commit IDs')
+        // Define a choice parameter to select a branch
+        choice(
+            name: 'BRANCH_NAME',
+            choices: getBranchChoices(),
+            description: 'Select the branch to list commit IDs'
+        )
     }
 
     stages {
         stage('Checkout Repository') {
             steps {
                 script {
-                    // Checkout the specified branch
+                    // Checkout the selected branch
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: "*/${params.BRANCH_NAME}"]],
+                        branches: [[name: "refs/heads/${params.BRANCH_NAME}"]],
                         userRemoteConfigs: [[
                             url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                         ]]
@@ -25,21 +29,42 @@ pipeline {
         stage('List Commit IDs') {
             steps {
                 script {
-                    // Fetch commit history for the branch
-                    def command = "git log --oneline"
-                    def output = sh(script: command, returnStdout: true).trim()
-
-                    // Split the output into lines and display each commit ID
-                    def commitIds = output.split('\n').collect { line ->
-                        def commitId = line.split()[0]
-                        return commitId
-                    }
-
-                    // Print the list of commit IDs
+                    // Fetch and display commit IDs from the selected branch
+                    def commits = listCommits(params.BRANCH_NAME)
                     echo "Commit IDs for branch '${params.BRANCH_NAME}':"
-                    commitIds.each { echo it }
+                    commits.each { commit ->
+                        echo commit
+                    }
                 }
             }
         }
     }
+}
+
+// Helper function to fetch the list of branch choices from the repository
+def getBranchChoices() {
+    // Run git command to fetch the list of branches
+    def command = "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git"
+    def output = sh(script: command, returnStdout: true).trim()
+
+    // Parse the output to extract the list of branch names
+    def branches = output.split('\n').collect { line ->
+        def parts = line.split()
+        def ref = parts[1]
+        // Extract the branch name from the reference (refs/heads/branch_name)
+        return ref.replaceAll(/^refs\/heads\//, '')
+    }
+
+    return branches
+}
+
+// Function to list commit IDs from the selected branch
+def listCommits(String branchName) {
+    // Run git command to list commits from the specified branch
+    def command = "git log --pretty=format:'%h' ${branchName}"
+    def output = sh(script: command, returnStdout: true).trim()
+
+    // Split the output into a list of commit IDs
+    def commitList = output.split('\n')
+    return commitList
 }
