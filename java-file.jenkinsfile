@@ -1,56 +1,45 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Checkout') {
-            steps {
-                // Checkout the Git repository
-                checkout scm: [
-                    $class: 'GitSCM',
-                    branches: [[name: 'main']], // Specify the branch you want to checkout
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-                        credentialsId: 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Use the appropriate credentials ID
-                    ]]
-                ]
-            }
-        }
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Enter the branch name to list commit IDs')
+    }
 
-        stage('Select Commit ID') {
+    stages {
+        stage('List Commit IDs') {
             steps {
                 script {
-                    // Define the workspace directory path (change if needed)
-                    def workspacePath = pwd()
-                    
-                    // Get the list of commit IDs (SHA) from the Git repository
-                    def commitIds = sh(script: "cd ${workspacePath} && git log --pretty=format:'%h' -n 10", returnStdout: true)
-                                    .split('\n')
-                                    .collect { it.trim() }
-                    
-                    // Provide a dropdown choice of commit IDs for user selection
-                    def selectedCommitId = input(
-                        message: 'Select a commit ID to proceed:',
-                        parameters: [
-                            choice(name: 'Commit ID', choices: commitIds)
-                        ]
-                    )
+                    def branchName = params.BRANCH_NAME
+                    def commitIds = listCommitIds(branchName)
 
-                    // Output the selected commit ID
-                    echo "Selected Commit ID: ${selectedCommitId}"
-
-                    // Use the selected commit ID for further processing
-                    // For example, checking out the specific commit
-                    sh "cd ${workspacePath} && git checkout ${selectedCommitId}"
+                    // Print the list of commit IDs
+                    echo "List of commit IDs for branch '${branchName}':"
+                    for (commitId in commitIds) {
+                        echo commitId
+                    }
                 }
-            }
-        }
-
-        stage('Perform Actions on Selected Commit') {
-            steps {
-                // Perform actions using the selected commit ID
-                echo "Performing actions on selected commit..."
-                // Add your specific actions here
             }
         }
     }
 }
+
+def listCommitIds(branchName) {
+    // Define the Git repository URL
+    def repoUrl = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+
+    // Use the Git command to fetch the commit history for the specified branch
+    def commitIds = []
+
+    // Execute the Git command to fetch the commit history for the specified branch
+    def command = "git ls-remote ${repoUrl} refs/heads/${branchName}"
+    def output = command.execute().text
+
+    // Parse the output and extract commit IDs
+    output.eachLine { line ->
+        def commitId = line.split('\t')[0]
+        commitIds << commitId
+    }
+
+    return commitIds
+}
+
