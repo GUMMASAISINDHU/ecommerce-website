@@ -1,41 +1,62 @@
 pipeline {
     agent any
- 
-    parameters {
-        extendedChoice(
-            name: 'GIT_COMMIT',
-            description: 'Select a Git commit',
-            type: 'PT_SINGLE_SELECT',
-            script: [
-                classpath: [],
-                sandbox: false,
-                script: '''
-                    def gitCommits = []
-                    def proc = "git log --pretty=format:'%h - %an, %ar : %s'".execute()
-                    proc.in.eachLine { line -> gitCommits << line }
-                    return gitCommits
-                '''
-            ]
-        )
-    }
+
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the code from your Git repository
-                git branch: "${params.GIT_COMMIT}", url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                script {
+                    // Fetch the latest commits from the repository
+                    sh 'git fetch'
+                    
+                    // Get the last 5 commits and their short hashes
+                    def lastFiveCommits = sh(
+                        script: "git log -5 --pretty=format:'%h %s'",
+                        returnStdout: true
+                    ).trim().split("\n")
+
+                    // Parse the list of commits to display to the user
+                    def commitChoices = lastFiveCommits.collect { line ->
+                        def (commitId, commitMessage) = line.split(' ', 2)
+                        return "${commitId} - ${commitMessage}"
+                    }
+
+                    // Prompt the user to select one of the last 5 commits
+                    def chosenCommit = input(
+                        message: 'Please select a commit to run the pipeline on:',
+                        parameters: [
+                            choice(
+                                name: 'commit',
+                                choices: commitChoices.join("\n"),
+                                description: 'Select a commit ID to build:'
+                            )
+                        ]
+                    )
+
+                    // Extract the commit ID from the chosen option
+                    def commitId = chosenCommit.split(' ')[0]
+
+                    // Checkout the chosen commit
+                    sh "git checkout ${commitId}"
+                }
             }
         }
-        stage('Build') {
+        stage ('Build') {
             steps {
-                // Your build steps
+                sh '''
+                mvn package
+                '''
+            }
+            post {
+                success {
+                    echo "Archiving the Artifacts"
+                    archiveArtifacts artifacts: '**/target/*.war'
+                }
             }
         }
-    }
-    post {
-        always {
-            // Print the commit ID
-            echo "Commit ID: ${params.GIT_COMMIT}"
+        stage ('Deploy to tomcat server') {
+            steps {
+                deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war'
+            }
         }
     }
 }
-
