@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+
+    // Define parameters for the pipeline
+    parameters {
+        // Choice parameter for selecting a branch
+        choice(
+            name: 'BRANCH',
+            choices: fetchBranches(),
+            description: 'Select a branch'
+        )
+        
+        // Choice parameter for selecting a commit ID from the selected branch
+        choice(
+            name: 'COMMIT_ID',
+            choices: fetchCommits(params.BRANCH),
+            description: 'Select a commit ID from the selected branch'
+        )
+    }
+
+    stages {
+        stage('Checkout Selected Commit') {
+            steps {
+                script {
+                    // Checkout the selected branch and commit ID
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: params.COMMIT_ID]],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git', // Replace with your repo URL
+                            credentialsId: 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Replace with your credentials ID if needed
+                        ]]
+                    ])
+                }
+            }
+        }
+        
+        stage('Apply Pipeline on Selected Commit') {
+            steps {
+                script {
+                    // Run your pipeline tasks on the selected commit here
+                    echo "Running pipeline on commit ID: ${params.COMMIT_ID} of branch: ${params.BRANCH}"
+                    
+                    // Add your pipeline tasks here (e.g., build, test, deploy)
+                }
+            }
+        }
+    }
+}
+
+// Function to fetch the list of branches from the repository
+def fetchBranches() {
+    def branches = []
+    try {
+        // Use git ls-remote to list branches
+        def command = 'git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+        def output = sh(script: command, returnStdout: true).trim()
+        
+        // Parse output and extract branch names
+        output.split('\n').each { line ->
+            def ref = line.split()[1]
+            def branchName = ref.replaceAll('^refs/heads/', '')
+            branches << branchName
+        }
+    } catch (Exception e) {
+        echo "Failed to fetch branches: ${e.message}"
+    }
+    return branches
+}
+
+// Function to fetch the list of commit IDs from the specified branch
+def fetchCommits(String branch) {
+    def commits = []
+    try {
+        // Use git log to list commit IDs of the branch
+        def command = "git log --pretty=format:'%h' ${branch}"
+        def output = sh(script: command, returnStdout: true).trim()
+        
+        // Split output into a list of commit IDs
+        commits = output.split('\n')
+    } catch (Exception e) {
+        echo "Failed to fetch commits: ${e.message}"
+    }
+    return commits
+}
