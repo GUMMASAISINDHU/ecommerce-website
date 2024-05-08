@@ -10,7 +10,7 @@ pipeline {
                     branches: [[name: 'main']], // Specify the branch you want to checkout
                     userRemoteConfigs: [[
                         url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-                        credentialsId: '' // Use the appropriate credentials ID
+                        credentialsId: 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Use the appropriate credentials ID
                     ]]
                 ]
             }
