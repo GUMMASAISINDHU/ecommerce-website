@@ -1,1 +1,35 @@
-new.exe file.txt
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the Git repository from GitHub
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']], // Specify the branch you want to checkout
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+                        credentialsId: 'your-credentials-id' // Use appropriate credentials ID
+                    ]]
+                ]
+            }
+        }
+
+        stage('List Latest Commits') {
+            steps {
+                script {
+                    // Define the path to the Git repository
+                    def gitRepoPath = '/var/lib/jenkins/workspace/test' // Adjust path if needed
+                    
+                    // List the latest commits
+                    def latestCommits = sh(script: "cd ${gitRepoPath} && git log -5 --oneline", returnStdout: true).trim()
+                    
+                    // Print the latest commits
+                    echo "Latest 5 commits:"
+                    echo latestCommits
+                }
+            }
+        }
+    }
+}
