@@ -22,15 +22,18 @@ pipeline {
         stage('Checkout Selected Commit') {
             steps {
                 script {
-                    // Checkout the selected branch and commit ID
+                    // Checkout the selected commit ID from the selected branch
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: params.COMMIT_ID]],
+                        branches: [[name: params.BRANCH]],
                         userRemoteConfigs: [[
-                            url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git', // Replace with your repo URL
-                            credentialsId: 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Replace with your credentials ID if needed
-                        ]]
+                            url: env.REPO_URL,
+                            credentialsId: env.CRED_ID
+                        ]],
+                        extensions: [[$class: 'CleanBeforeCheckout']]
                     ])
+                    
+                    sh "git checkout ${params.COMMIT_ID}"
                 }
             }
         }
@@ -48,12 +51,20 @@ pipeline {
     }
 }
 
-// Function to fetch the list of branches from the repository
+// Define environment variables for repository URL and credentials ID
+// You can replace these with environment variable parameters in the Jenkinsfile if necessary.
+env.REPO_URL = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+env.CRED_ID = 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Replace with your credentials ID
+
+/**
+ * Fetches the list of branches from the repository.
+ * @return A list of branch names.
+ */
 def fetchBranches() {
     def branches = []
     try {
         // Use git ls-remote to list branches
-        def command = 'git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+        def command = "git ls-remote --heads ${env.REPO_URL}"
         def output = sh(script: command, returnStdout: true).trim()
         
         // Parse output and extract branch names
@@ -68,13 +79,20 @@ def fetchBranches() {
     return branches
 }
 
-// Function to fetch the list of commit IDs from the specified branch
+/**
+ * Fetches the list of commit IDs from the specified branch.
+ * @param branch The branch to fetch commit IDs from.
+ * @return A list of commit IDs.
+ */
 def fetchCommits(String branch) {
     def commits = []
     try {
+        // Define the repository directory path
+        def repoDir = "${env.WORKSPACE}"
+        
         // Use git log to list commit IDs of the branch
         def command = "git log --pretty=format:'%h' ${branch}"
-        def output = sh(script: command, returnStdout: true).trim()
+        def output = sh(script: command, returnStdout: true, dir: repoDir).trim()
         
         // Split output into a list of commit IDs
         commits = output.split('\n')
