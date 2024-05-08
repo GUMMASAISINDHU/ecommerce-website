@@ -2,44 +2,44 @@ pipeline {
     agent any
 
     parameters {
+        // Define a branch parameter that users can specify
         string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Enter the branch name to list commit IDs')
     }
 
     stages {
+        stage('Checkout Repository') {
+            steps {
+                script {
+                    // Checkout the specified branch
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${params.BRANCH_NAME}"]],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                        ]]
+                    ])
+                }
+            }
+        }
+
         stage('List Commit IDs') {
             steps {
                 script {
-                    def branchName = params.BRANCH_NAME
-                    def commitIds = listCommitIds(branchName)
+                    // Fetch commit history for the branch
+                    def command = "git log --oneline"
+                    def output = sh(script: command, returnStdout: true).trim()
+
+                    // Split the output into lines and display each commit ID
+                    def commitIds = output.split('\n').collect { line ->
+                        def commitId = line.split()[0]
+                        return commitId
+                    }
 
                     // Print the list of commit IDs
-                    echo "List of commit IDs for branch '${branchName}':"
-                    for (commitId in commitIds) {
-                        echo commitId
-                    }
+                    echo "Commit IDs for branch '${params.BRANCH_NAME}':"
+                    commitIds.each { echo it }
                 }
             }
         }
     }
 }
-
-def listCommitIds(branchName) {
-    // Define the Git repository URL
-    def repoUrl = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
-
-    // Use the Git command to fetch the commit history for the specified branch
-    def commitIds = []
-
-    // Execute the Git command to fetch the commit history for the specified branch
-    def command = "git ls-remote ${repoUrl} refs/heads/${branchName}"
-    def output = command.execute().text
-
-    // Parse the output and extract commit IDs
-    output.eachLine { line ->
-        def commitId = line.split('\t')[0]
-        commitIds << commitId
-    }
-
-    return commitIds
-}
-
