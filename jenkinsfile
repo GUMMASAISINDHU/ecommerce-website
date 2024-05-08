@@ -1,26 +1,16 @@
 pipeline {
     agent any
 
-    parameters {
-        // Parameter to let the user select a branch
-        choice(name: 'BRANCH_NAME', 
-               choices: ['main', 'feature-branch1', 'feature-branch2'], // List available branches here
-               description: 'Select a branch to run the pipeline on:')
-    }
-
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    // Use the branch specified in the parameter
-                    def branchName = params.BRANCH_NAME
-
-                    // Fetch the latest commits from the specified branch
-                    sh "git fetch origin ${branchName}"
-
-                    // Get the last 5 commits from the specified branch
+                    // Fetch the latest commits from the repository
+                    sh 'git fetch'
+                    
+                    // Get the last 5 commits and their short hashes
                     def lastFiveCommits = sh(
-                        script: "git log origin/${branchName} -5 --pretty=format:'%h %s'",
+                        script: "git log -5 --pretty=format:'%h %s'",
                         returnStdout: true
                     ).trim().split("\n")
 
@@ -30,7 +20,7 @@ pipeline {
                         return "${commitId} - ${commitMessage}"
                     }
 
-                    // Prompt the user to select one of the last 5 commits from the specified branch
+                    // Prompt the user to select one of the last 5 commits
                     def chosenCommit = input(
                         message: 'Please select a commit to run the pipeline on:',
                         parameters: [
@@ -45,23 +35,25 @@ pipeline {
                     // Extract the commit ID from the chosen option
                     def commitId = chosenCommit.split(' ')[0]
 
-                    // Checkout the chosen commit from the specified branch
+                    // Checkout the chosen commit
                     sh "git checkout ${commitId}"
                 }
             }
         }
-        stage('Build') {
+        stage ('Build') {
             steps {
-                sh 'mvn package'
+                sh '''
+                mvn package
+                '''
             }
             post {
                 success {
-                    echo 'Archiving the Artifacts'
+                    echo "Archiving the Artifacts"
                     archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
         }
-        stage('Deploy to Tomcat server') {
+        stage ('Deploy to tomcat server') {
             steps {
                 deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war'
             }
