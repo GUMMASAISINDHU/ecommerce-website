@@ -1,23 +1,56 @@
-package com.example.jenkinsjobapplication;
+pipeline {
+    agent any
 
-import jakarta.annotation.PostConstruct;
-import org.apache.juli.logging.LogFactory;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the Git repository
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']], // Specify the branch you want to checkout
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+                        credentialsId: '' // Use the appropriate credentials ID
+                    ]]
+                ]
+            }
+        }
 
-import java.util.logging.Logger;
+        stage('Select Commit ID') {
+            steps {
+                script {
+                    // Define the workspace directory path (change if needed)
+                    def workspacePath = pwd()
+                    
+                    // Get the list of commit IDs (SHA) from the Git repository
+                    def commitIds = sh(script: "cd ${workspacePath} && git log --pretty=format:'%h' -n 10", returnStdout: true)
+                                    .split('\n')
+                                    .collect { it.trim() }
+                    
+                    // Provide a dropdown choice of commit IDs for user selection
+                    def selectedCommitId = input(
+                        message: 'Select a commit ID to proceed:',
+                        parameters: [
+                            choice(name: 'Commit ID', choices: commitIds)
+                        ]
+                    )
 
-@SpringBootApplication
-public class JenkinsJobApplication   {
+                    // Output the selected commit ID
+                    echo "Selected Commit ID: ${selectedCommitId}"
 
-	//public static Logger logger = (Logger) LogFactory.getLog(JenkinsJobApplication.class);
+                    // Use the selected commit ID for further processing
+                    // For example, checking out the specific commit
+                    sh "cd ${workspacePath} && git checkout ${selectedCommitId}"
+                }
+            }
+        }
 
-	@PostConstruct
-	 public void init(){
-		System.out.println(" Dev Environment ");
-	 }
-	public static void main(String[] args) {
-		SpringApplication.run(JenkinsJobApplication.class, args);
-	}
-
+        stage('Perform Actions on Selected Commit') {
+            steps {
+                // Perform actions using the selected commit ID
+                echo "Performing actions on selected commit..."
+                // Add your specific actions here
+            }
+        }
+    }
 }
