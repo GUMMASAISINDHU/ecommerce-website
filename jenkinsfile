@@ -6,7 +6,7 @@ pipeline {
             steps {
                 script {
                     // Fetch the latest commits from the repository
-                    sh 'git fetch'
+                    sh "git fetch origin ${params.Branch}"
                     
                     // Get the last 5 commits and their short hashes
                     def lastFiveCommits = sh(
