@@ -1,86 +1,59 @@
 pipeline {
     agent any
-
-    // Define parameters for the pipeline
-    parameters {
-        // Choice parameter for selecting a branch
-        choice(
-            name: 'BRANCH',
-            choices: fetchBranches(),
-            description: 'Select a branch'
-        )
-        
-        // Choice parameter for selecting a commit ID from the selected branch
-        choice(
-            name: 'COMMIT_ID',
-            choices: fetchCommits(params.BRANCH),
-            description: 'Select a commit ID from the selected branch'
-        )
-    }
-
+ 
     stages {
-        stage('Checkout Selected Commit') {
+        stage('Checkout') {
             steps {
-                script {
-                    // Checkout the selected branch and commit ID
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: params.BRANCH]],
-                        userRemoteConfigs: [[
-                            url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git', // Replace with your repo URL
-                            credentialsId: 'ccbfdb0a-741d-4425-a8b3-d6272462cbb1' // Replace with your credentials ID if needed
-                        ]]
-                    ])
-                    sh "git checkout ${params.COMMIT_ID}"
+                // Fetch the latest commits from the repository
+                sh 'git fetch origin ${Branch}'
+                // Get the last 5 commits and their short hashes
+                def lastFiveCommits = sh(
+                    script: "git log -5 --pretty=format:'%h %s'",
+                    returnStdout: true
+                ).trim().split("\n")
+ 
+                // Parse the list of commits to display to the user
+                def commitChoices = lastFiveCommits.collect { line ->
+                    def (commitId, commitMessage) = line.split(' ', 2)
+                    return "${commitId} - ${commitMessage}"
+                }
+ 
+                // Prompt the user to select one of the last 5 commits
+                def chosenCommit = input(
+                    message: 'Please select a commit to run the pipeline on:',
+                    parameters: [
+                        choice(
+                            name: 'commit',
+                            choices: commitChoices.join("\n"),
+                            description: 'Select a commit ID to build:'
+                        )
+                    ]
+                )
+ 
+                // Extract the commit ID from the chosen option
+                def commitId = chosenCommit.split(' ')[0]
+ 
+                // Checkout the chosen commit
+                sh "git checkout ${commitId}"
+            }
+        }
+        stage ('Build') {
+            steps {
+                sh '''
+                mvn package
+                '''
+            }
+            post {
+                success {
+                    echo "Archiving the Artifacts"
+                    archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
         }
-        
-        stage('Apply Pipeline on Selected Commit') {
+        stage ('Deploy to tomcat server') {
             steps {
-                script {
-                    // Run your pipeline tasks on the selected commit here
-                    echo "Running pipeline on commit ID: ${params.COMMIT_ID} of branch: ${params.BRANCH}"
-                    
-                    // Add your pipeline tasks here (e.g., build, test, deploy)
-                }
+                deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war'
             }
         }
     }
-}
-
-// Function to fetch the list of branches from the repository
-def fetchBranches() {
-    def branches = []
-    try {
-        // Use git ls-remote to list branches
-        def command = "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git"
-        def output = sh(script: command, returnStdout: true).trim()
-        
-        // Parse output and extract branch names
-        output.split('\n').each { line ->
-            def ref = line.split()[1]
-            def branchName = ref.replaceAll('^refs/heads/', '')
-            branches << branchName
-        }
-    } catch (Exception e) {
-        echo "Failed to fetch branches: ${e.message}"
-    }
-    return branches
-}
-
-// Function to fetch the list of commit IDs from the specified branch
-def fetchCommits(String branch) {
-    def commits = []
-    try {
-        // Use git log to list commit IDs of the branch
-        def command = "git log --pretty=format:'%h' ${branch}"
-        def output = sh(script: command, returnStdout: true).trim()
-        
-        // Split output into a list of commit IDs
-        commits = output.split('\n')
-    } catch (Exception e) {
-        echo "Failed to fetch commits: ${e.message}"
-    }
-    return commits
 }
