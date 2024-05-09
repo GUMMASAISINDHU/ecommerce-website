@@ -5,7 +5,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Fetch the latest commits from the repository
-                sh 'git fetch origin ${Branch}'
+                sh "git fetch origin ${params.Branch}"
                 // Get the last 5 commits and their short hashes
                 def lastFiveCommits = sh(
                     script: "git log -5 --pretty=format:'%h %s'",
