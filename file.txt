@@ -1,41 +1,24 @@
-// Declare the branch parameter
-properties([
-    parameters([
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to check out')
-    ])
-])
+import groovy.json.JsonSlurper
 
-pipeline {
-    agent any
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                // Checkout the specified branch
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: params.BRANCH_NAME]], // Use the branch name from the parameter
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-                        credentialsId: 'your-credentials-id' // Specify credentials if needed
-                    ]]
-                ])
-            }
-        }
-        
-        stage('List Commits') {
-            steps {
-                script {
-                    // Get the current commit ID and list the latest commits
-                    def currentCommitID = env.GIT_COMMIT
-                    println "Current Commit ID: $currentCommitID"
-                    
-                    // Fetch the latest commits using a git command within a shell
-                    sh '''
-                    git log --pretty=format:"%h - %s" -n 5
-                    '''
-                }
-            }
-        }
-    }
+// Replace 'your-github-username' and 'your-token' with appropriate values
+def username = "your-github-username"
+def token = "your-token"
+def repository = "your-repository-name" // Specify the repository
+
+// Fetch the user's input (prefix) from the query
+def prefix = params['value']?.toLowerCase() ?: ""
+
+// Fetch branches from the repository
+def url = "https://api.github.com/repos/${username}/${repository}/branches"
+def connection = new URL(url).openConnection()
+connection.setRequestProperty("Authorization", "token ${token}")
+def response = connection.inputStream.text
+def branches = new JsonSlurper().parseText(response)
+
+// Filter branches based on the prefix
+def matchingBranches = branches.findAll { branch ->
+    branch.name.toLowerCase().startsWith(prefix)
 }
+
+// Return a list of branch names that match the prefix
+return matchingBranches.collect { it.name }
