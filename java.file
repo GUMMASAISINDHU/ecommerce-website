@@ -23,25 +23,67 @@ pipeline {
                     returnStdout: true
                 ).trim().split("\n")
  
-                // Prompt the user to select one of the last 5 commits
+                // Prompt the user to select one of the last 5 commits and a repository
                 def chosenCommit = input(
-                    message: 'Please select a commit to run the pipeline on:',
+                    message: 'Please select a commit and repository to run the pipeline:',
                     parameters: [
                         [$class: 'ChoiceParameter',
                          choiceType: 'PT_SINGLE_SELECT',
                          description: 'Select a commit ID to build:',
                          name: 'commit',
+                         filterLength: 1,
+                         script: [$class: 'GroovyScript', 
+                                  fallbackScript: [
+                                      classpath: [], 
+                                      script: 'return [""]'
+                                  ], 
+                                  script: [
+                                      classpath: [], 
+                                      sandbox: false, 
+                                      script: """
+                                          def filteredCommits = []
+                                          def firstLetter = params['commit'].toUpperCase()
+                                          for (def choice : commitChoices) {
+                                              if (choice.startsWith(firstLetter)) {
+                                                  filteredCommits.add(choice)
+                                              }
+                                          }
+                                          return filteredCommits
+                                      """
+                                  ]
+                         ],
                          choices: commitChoices.join('\n')
                         ],
                         [$class: 'ChoiceParameter',
                          choiceType: 'PT_SINGLE_SELECT',
                          description: 'Select a repository:',
                          name: 'repository',
+                         filterLength: 1,
+                         script: [$class: 'GroovyScript', 
+                                  fallbackScript: [
+                                      classpath: [], 
+                                      script: 'return [""]'
+                                  ], 
+                                  script: [
+                                      classpath: [], 
+                                      sandbox: false, 
+                                      script: """
+                                          def filteredRepos = []
+                                          def firstLetter = params['repository'].toUpperCase()
+                                          for (def repo : repositoryList) {
+                                              if (repo.startsWith(firstLetter)) {
+                                                  filteredRepos.add(repo)
+                                              }
+                                          }
+                                          return filteredRepos
+                                      """
+                                  ]
+                         ],
                          choices: repositoryList.join('\n')
                         ]
                     ]
                 )
-                // Extract the commit ID from the chosen option
+                // Extract the commit ID and repository from the chosen option
                 def commitId = chosenCommit.split(' ')[0]
                 def repository = chosenCommit.split(' ')[1]
                 // Checkout the chosen commit
@@ -64,7 +106,8 @@ pipeline {
         }
         stage ('Deploy to tomcat server') {
             steps {
-                deploy adapters: [tomcat7(credentialsId: 53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a'', path: '', url: 'http://54.205.238.236:8081/')], contextPath: null, war: '**/*.war'
+                deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a
+', path: '', url: 'http://54.146.160.149:8081/')], contextPath: null, war: '**/*.war'
             }
         }
     }
