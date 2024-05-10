@@ -3,92 +3,54 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Fetch the latest commits from the repository
-                sh 'git fetch'
-                // Get the last 5 commits and their short hashes
-                def lastFiveCommits = sh(
-                    script: "git log -5 --pretty=format:'%h %s'",
-                    returnStdout: true
-                ).trim().split("\n")
-                // Parse the list of commits to display to the user
-                def commitChoices = lastFiveCommits.collect { line ->
-                    def (commitId, commitMessage) = line.split(' ', 2)
-                    return "${commitId} - ${commitMessage}"
-                }
-                // Fetching repository list from GitHub
-                def repositoryList = sh(
-                    script: """
-                    curl -s -H 'Authorization: token YOUR_GITHUB_TOKEN' https://api.github.com/user/repos | grep '"full_name"' | awk -F': "' '{print \$2}' | awk -F'"' '{print \$1}'
-                    """,
-                    returnStdout: true
-                ).trim().split("\n")
- 
-                // Prompt the user to select one of the last 5 commits and a repository
-                def chosenCommit = input(
-                    message: 'Please select a commit and repository to run the pipeline:',
-                    parameters: [
-                        [$class: 'ChoiceParameter',
-                         choiceType: 'PT_SINGLE_SELECT',
-                         description: 'Select a commit ID to build:',
-                         name: 'commit',
-                         filterLength: 1,
-                         script: [$class: 'GroovyScript', 
-                                  fallbackScript: [
-                                      classpath: [], 
-                                      script: 'return [""]'
-                                  ], 
-                                  script: [
-                                      classpath: [], 
-                                      sandbox: false, 
-                                      script: """
-                                          def filteredCommits = []
-                                          def firstLetter = params['commit'].toUpperCase()
-                                          for (def choice : commitChoices) {
-                                              if (choice.startsWith(firstLetter)) {
-                                                  filteredCommits.add(choice)
+                script {
+                    // Fetch the latest commits from the repository
+                    sh 'git fetch'
+                    // Get the last 5 commits and their short hashes
+                    def lastFiveCommits = sh(
+                        script: "git log -5 --pretty=format:'%h %s'",
+                        returnStdout: true
+                    ).trim().split("\n")
+                    // Parse the list of commits to display to the user
+                    def commitChoices = lastFiveCommits.collect { line ->
+                        def (commitId, commitMessage) = line.split(' ', 2)
+                        return "${commitId} - ${commitMessage}"
+                    }
+                    // Prompt the user to select one of the last 5 commits
+                    def chosenCommit = input(
+                        message: 'Please select a commit to run the pipeline on:',
+                        parameters: [
+                            [$class: 'DynamicReferenceParameter',
+                             name: 'commit',
+                             description: 'Select a commit ID to build:',
+                             script: [$class: 'GroovyScript', 
+                                      fallbackScript: [
+                                          classpath: [], 
+                                          script: 'return [""]'
+                                      ], 
+                                      script: [
+                                          classpath: [], 
+                                          sandbox: false, 
+                                          script: """
+                                              def filteredCommits = []
+                                              def firstLetter = params['value'].toUpperCase()
+                                              for (def choice : commitChoices) {
+                                                  if (choice.startsWith(firstLetter)) {
+                                                      filteredCommits.add(choice)
+                                                  }
                                               }
-                                          }
-                                          return filteredCommits
-                                      """
-                                  ]
-                         ],
-                         choices: commitChoices.join('\n')
-                        ],
-                        [$class: 'ChoiceParameter',
-                         choiceType: 'PT_SINGLE_SELECT',
-                         description: 'Select a repository:',
-                         name: 'repository',
-                         filterLength: 1,
-                         script: [$class: 'GroovyScript', 
-                                  fallbackScript: [
-                                      classpath: [], 
-                                      script: 'return [""]'
-                                  ], 
-                                  script: [
-                                      classpath: [], 
-                                      sandbox: false, 
-                                      script: """
-                                          def filteredRepos = []
-                                          def firstLetter = params['repository'].toUpperCase()
-                                          for (def repo : repositoryList) {
-                                              if (repo.startsWith(firstLetter)) {
-                                                  filteredRepos.add(repo)
-                                              }
-                                          }
-                                          return filteredRepos
-                                      """
-                                  ]
-                         ],
-                         choices: repositoryList.join('\n')
+                                              return filteredCommits
+                                          """
+                                      ]
+                             ]
+                            ]
                         ]
-                    ]
-                )
-                // Extract the commit ID and repository from the chosen option
-                def commitId = chosenCommit.split(' ')[0]
-                def repository = chosenCommit.split(' ')[1]
-                // Checkout the chosen commit
-                sh "git checkout ${commitId}"
-                sh "git remote set-url origin https://github.com/${repository}.git"
+                    )
+                    // Extract the commit ID from the chosen option
+                    def commitId = chosenCommit.split(' ')[0]
+                    // Checkout the chosen commit
+                    sh "git checkout ${commitId}"
+                }
             }
         }
         stage ('Build') {
@@ -107,8 +69,9 @@ pipeline {
         stage ('Deploy to tomcat server') {
             steps {
                 deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a
-', path: '', url: 'http://54.146.160.149:8081/')], contextPath: null, war: '**/*.war'
+', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war'
             }
         }
     }
 }
+
