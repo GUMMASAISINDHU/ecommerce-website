@@ -4,7 +4,7 @@ pipeline {
         // Define a parameter for selecting the branch
         choice(
             name: 'BRANCH',
-            choices: ['master', 'development', 'feature'],
+            choices: ['main', 'br1', 'develop', 'release'],
             description: 'Select the branch to build'
         )
         // Define a parameter for entering commit IDs
