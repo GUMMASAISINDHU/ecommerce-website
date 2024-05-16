@@ -1,84 +1,43 @@
-[20:42] Pandari Mounika
 pipeline {
-
     agent any
-
     parameters {
-
         // Define a parameter for selecting the branch
-
         choice(
-
             name: 'BRANCH',
-
             choices: ['master', 'development', 'feature'],
-
             description: 'Select the branch to build'
-
         )
-
         // Define a parameter for entering commit IDs
-
         text(
-
             name: 'COMMIT_ID',
-
             defaultValue: '',
-
             description: 'Enter the commit IDs (separated by comma)'
-
         )
-
     }
-
     stages {
-
         stage('Checkout') {
-
             steps {
-
                 // Checkout the selected branch
-
                 script {
-
-                    checkout([$class: 'GitSCM', branches: [[name: "*/${params.BRANCH}"]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website']]])
-
+                    checkout([$class: 'GitSCM', branches: [[name: "*/${params.BRANCH}"]], userRemoteConfigs: [[url: '
+https://github.com/GUMMASAISINDHU/ecommerce-website/']]])
                 }
-
             }
-
         }
-
         stage('Build') {
-
             steps {
-
                 // Build your project
-
                 sh 'mvn clean install'
-
             }
-
         }
-
         stage('Deploy') {
-
             when {
-
                 branch 'master'
-
             }
-
             steps {
-
                 // Deploy your project
-
                 sh 'mvn deploy'
-
             }
-
         }
-
     }
-
 }
