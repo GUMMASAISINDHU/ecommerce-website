@@ -1,4 +1,21 @@
-<body style-"background-color:powderblue;">
-<h1>welcome to my webpage</h1>
-<p>This webpage deployed by jenkins</p>
-</body>
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the Git repository
+                checkout([$class: 'GitSCM', branches: [[name: '*/develop']], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
+            }
+        }
+        stage('Display Commit ID') {
+            steps {
+                script {
+                    // Use git command to get the latest commit ID from the 'develop' branch
+                    def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Latest commit ID on the 'develop' branch: ${commitID}"
+                }
+            }
+        }
+    }
+}
