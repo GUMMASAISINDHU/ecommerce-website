@@ -9,7 +9,7 @@ pipeline {
             filterable(true)
             groovyScript {
                 script('''
-                    def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website/"
+                    def gitUrl = "https://github.com/PandiriMounika2001/myPythonDockerRepo.git"
                     def branches = "git ls-remote --heads ${gitUrl}".execute().text.readLines().collect {
                         it.split()[1].replaceAll('refs/heads/', '')
                     }
@@ -29,7 +29,7 @@ pipeline {
                     if (!binding.hasVariable('BRANCH_NAME') || BRANCH_NAME == '') {
                         return ["Select a branch first"]
                     }
-                    def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website/"
+                    def gitUrl = "https://github.com/PandiriMounika2001/myPythonDockerRepo.git"
                     def commits = "git ls-remote ${gitUrl} refs/heads/${BRANCH_NAME}".execute().text.readLines().collect {
                         it.split()[0]
                     }
@@ -57,9 +57,13 @@ pipeline {
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: "${params.COMMIT_ID}"]],
-                        userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website/']],
+                        userRemoteConfigs: [[url: 'https://github.com/PandiriMounika2001/myPythonDockerRepo.git']],
                         extensions: [[$class: 'LocalBranch', localBranch: "${params.BRANCH_NAME}"]]
                     ])
                 }
             }
         }
+ 
+        // Add additional stages as required for your build process
+    }
+}
