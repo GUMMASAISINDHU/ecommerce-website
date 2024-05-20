@@ -1,25 +1,24 @@
 pipeline {
     agent any
-
+    
     parameters {
-        choice(name: 'BRANCH', choices: ['master', 'develop','br1','br2'], description: 'Select the branch')
+        // Define a parameter to select the branch
+        choice(name: 'branch', choices: ['master', 'develop'], description: 'Select the branch')
     }
-
+    
     stages {
-        stage('Checkout') {
-            steps {
-                // Checkout the selected branch from the Git repository
-                script {
-                    checkout([$class: 'GitSCM', branches: [[name: "*/${params.BRANCH}"]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
-                }
-            }
-        }
         stage('Display Commit ID') {
             steps {
                 script {
-                    // Use git command to get the latest commit ID from the selected branch
+                    // Checkout the selected branch
+                    def selectedBranch = params.branch
+                    checkout([$class: 'GitSCM', branches: [[name: selectedBranch]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
+
+                    // Get the commit ID of the latest commit on the selected branch
                     def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    echo "Latest commit ID on the '${params.BRANCH}' branch: ${commitID}"
+
+                    // Display the commit ID
+                    println "Commit ID of the latest commit on branch $selectedBranch: $commitID"
                 }
             }
         }
