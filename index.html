@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     stages {
-        stage('Select Branch and Display Commit ID') {
+        stage('Display Branches and Commit IDs') {
             steps {
                 script {
                     // Retrieve the list of branches from the Git repository
@@ -10,25 +10,21 @@ pipeline {
                         it.replaceAll(/.*refs\/heads\//, '')
                     }
                     
-                    // Prompt the user to select a branch
-                    def userInput = input(
-                        id: 'branchInput', message: 'Select a branch:', parameters: [
-                            choice(name: 'branch', choices: branches)
-                        ]
-                    )
+                    // Display the dropdown menu header
+                    echo "Branch\t\tCommit ID"
+                    echo "-----------------------------"
                     
-                    // Get the selected branch from user input
-                    def selectedBranch = userInput.branch
-                    
-                    // Checkout the selected branch
-                    checkout([$class: 'GitSCM', branches: [[name: selectedBranch]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
-                    
-                    // Get the commit ID of the selected branch
-                    def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    
-                    // Display the selected branch and its commit ID
-                    echo "Selected Branch: $selectedBranch"
-                    echo "Commit ID of the latest commit on branch $selectedBranch: $commitID"
+                    // Iterate over each branch
+                    branches.each { branch ->
+                        // Checkout the branch
+                        checkout([$class: 'GitSCM', branches: [[name: branch]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
+                        
+                        // Get the commit ID of the latest commit on the branch
+                        def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                        
+                        // Display the branch name and its commit ID
+                        echo "${branch}\t\t${commitID}"
+                    }
                 }
             }
         }
