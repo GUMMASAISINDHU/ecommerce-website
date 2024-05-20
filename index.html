@@ -10,11 +10,7 @@ pipeline {
                         it.replaceAll(/.*refs\/heads\//, '')
                     }
                     
-                    // Display the dropdown menu header
-                    echo "Branch\t\tCommit ID"
-                    echo "-----------------------------"
-                    
-                    // Iterate over each branch
+                    // Display the branch names and their commit IDs as clickable links
                     branches.each { branch ->
                         // Checkout the branch
                         checkout([$class: 'GitSCM', branches: [[name: branch]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
@@ -22,8 +18,8 @@ pipeline {
                         // Get the commit ID of the latest commit on the branch
                         def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
                         
-                        // Display the branch name and its commit ID
-                        echo "${branch}\t\t${commitID}"
+                        // Display the branch name and its commit ID as a clickable link
+                        echo "<a href='${env.BUILD_URL}'>Branch: ${branch}</a> - Commit ID: ${commitID}"
                     }
                 }
             }
