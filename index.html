@@ -26,7 +26,8 @@ pipeline {
                     // Get the commit ID of the latest commit on the selected branch
                     def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 
-                    // Display the commit ID
+                    // Display the branch and its commit ID
+                    echo "Selected Branch: $selectedBranch"
                     echo "Commit ID of the latest commit on branch $selectedBranch: $commitID"
                 }
             }
