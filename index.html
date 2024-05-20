@@ -1,24 +1,33 @@
 pipeline {
     agent any
-    
-    parameters {
-        // Define a parameter to select the branch
-        choice(name: 'branch', choices: ['master', 'develop'], description: 'Select the branch')
-    }
-    
+
     stages {
-        stage('Display Commit ID') {
+        stage('Select Branch and Display Commit ID') {
             steps {
                 script {
+                    // Retrieve the list of branches from the Git repository
+                    def branches = sh(script: 'git ls-remote --heads origin', returnStdout: true).trim().split('\n').collect {
+                        it.replaceAll(/.*refs\/heads\//, '')
+                    }
+
+                    // Prompt the user to select a branch
+                    def userInput = input(
+                        id: 'branchInput', message: 'Select a branch:', parameters: [
+                            choice(name: 'branch', choices: branches)
+                        ]
+                    )
+
+                    // Get the selected branch from user input
+                    def selectedBranch = userInput.branch
+
                     // Checkout the selected branch
-                    def selectedBranch = params.branch
                     checkout([$class: 'GitSCM', branches: [[name: selectedBranch]], userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']]])
 
                     // Get the commit ID of the latest commit on the selected branch
                     def commitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 
                     // Display the commit ID
-                    println "Commit ID of the latest commit on branch $selectedBranch: $commitID"
+                    echo "Commit ID of the latest commit on branch $selectedBranch: $commitID"
                 }
             }
         }
