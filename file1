@@ -1,69 +1,36 @@
 pipeline {
     agent any
- 
-    parameters {
-        // Dropdown for selecting Git branch
-        activeChoiceParam('BRANCH_NAME') {
-            description('Select the Git branch')
-            choiceType('SINGLE_SELECT')
-            filterable(true)
-            groovyScript {
-                script('''
-                    def gitUrl = "https://github.com/PandiriMounika2001/myPythonDockerRepo.git"
-                    def branches = "git ls-remote --heads ${gitUrl}".execute().text.readLines().collect {
-                        it.split()[1].replaceAll('refs/heads/', '')
-                    }
-                    return branches
-                ''')
-                fallbackScript('return ["master"]')
-            }
-        }
- 
-        // Dropdown for selecting Git commit ID based on the selected branch
-        activeChoiceReactiveParam('COMMIT_ID') {
-            description('Select the commit ID')
-            choiceType('SINGLE_SELECT')
-            filterable(true)
-            groovyScript {
-                script('''
-                    if (!binding.hasVariable('BRANCH_NAME') || BRANCH_NAME == '') {
-                        return ["Select a branch first"]
-                    }
-                    def gitUrl = "https://github.com/PandiriMounika2001/myPythonDockerRepo.git"
-                    def commits = "git ls-remote ${gitUrl} refs/heads/${BRANCH_NAME}".execute().text.readLines().collect {
-                        it.split()[0]
-                    }
-                    return commits
-                ''')
-                fallbackScript('return ["No commits found"]')
-            }
-        }
-    }
- 
+
     stages {
-        stage('Show Parameters') {
+        stage('Select Branch and Commit') {
             steps {
                 script {
-                    echo "Selected Branch: ${params.BRANCH_NAME}"
-                    echo "Selected Commit ID: ${params.COMMIT_ID}"
-                }
-            }
-        }
- 
-        stage('Checkout') {
-            steps {
-                script {
+                    // Get the branches from the repository
+                    def branches = sh(script: "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git | awk '{print \$2}' | sed 's|refs/heads/||'", returnStdout: true).trim().split("\n")
+                    
+                    // Allow user to select a branch
+                    def selectedBranch = input message: 'Select a branch', parameters: [choice(name: 'BRANCH_NAME', choices: branches.join("\n"), description: 'Select the Git branch')]
+
+                    // Get the commit IDs for the selected branch
+                    def commits = sh(script: "git ls-remote https://github.com/GUMMASAISINDHU/ecommerce-website.git refs/heads/${selectedBranch} | awk '{print \$1}'", returnStdout: true).trim().split("\n")
+                    
+                    // Allow user to select a commit ID
+                    def selectedCommit = input message: 'Select a commit', parameters: [choice(name: 'COMMIT_ID', choices: commits.join("\n"), description: 'Select the commit ID')]
+
+                    echo "Selected Branch: ${selectedBranch}"
+                    echo "Selected Commit ID: ${selectedCommit}"
+
                     // Checkout the specific commit from the selected branch
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: "${params.COMMIT_ID}"]],
-                        userRemoteConfigs: [[url: 'https://github.com/PandiriMounika2001/myPythonDockerRepo.git']],
-                        extensions: [[$class: 'LocalBranch', localBranch: "${params.BRANCH_NAME}"]]
+                        branches: [[name: "${selectedCommit}"]],
+                        userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']],
+                        extensions: [[$class: 'LocalBranch', localBranch: "${selectedBranch}"]]
                     ])
                 }
             }
         }
- 
-        // Add additional stages as required for your build process
+        
+        // Additional stages can be added here
     }
 }
