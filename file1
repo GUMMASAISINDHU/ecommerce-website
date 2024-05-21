@@ -1,74 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Branch and Commit ID Selection</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .container {
-            margin: 20px;
-        }
-        .dropdowns {
-            display: none;
-            margin-top: 20px;
-        }
-        label, select {
-            margin-right: 10px;
-        }
-        button {
-            padding: 5px 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <button id="buildButton">Build</button>
-        <div class="dropdowns" id="dropdownContainer">
-            <label for="branchSelect">Select Branch:</label>
-            <select id="branchSelect">
-                <option value="">Select a branch</option>
-                <option value="main">Main</option>
-                <option value="develop">Develop</option>
-                <option value="feature">Feature</option>
-            </select>
+from flask import Flask, render_template, request
+import subprocess
 
-            <label for="commitSelect">Select Commit ID:</label>
-            <select id="commitSelect">
-                <option value="">Select a commit</option>
-            </select>
-        </div>
-    </div>
+app = Flask(__name__)
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            const commits = {
-                main: ["commit1_main", "commit2_main", "commit3_main"],
-                develop: ["commit1_develop", "commit2_develop", "commit3_develop"],
-                feature: ["commit1_feature", "commit2_feature", "commit3_feature"]
-            };
+def get_branches_and_commits():
+    branches = subprocess.check_output(["git", "branch", "-a"]).decode('utf-8').split('\n')
+    branches = [branch.strip() for branch in branches if branch]
+    commits = {branch: subprocess.check_output(["git", "rev-parse", branch]).decode('utf-8').strip() for branch in branches}
+    return branches, commits
 
-            $('#buildButton').click(function() {
-                $('#dropdownContainer').show();
-            });
+@app.route('/')
+def index():
+    branches, commits = get_branches_and_commits()
+    return render_template('index.html', branches=branches, commits=commits)
 
-            $('#branchSelect').change(function() {
-                const selectedBranch = $(this).val();
-                const commitSelect = $('#commitSelect');
+@app.route('/build', methods=['POST'])
+def build():
+    branch = request.form['branch']
+    commit_id = request.form['commit_id']
+    # Trigger the build process with the selected branch and commit ID
+    return f"Triggered build for branch {branch} at commit {commit_id}"
 
-                commitSelect.empty(); // Clear existing options
-                commitSelect.append('<option value="">Select a commit</option>');
-
-                if (selectedBranch && commits[selectedBranch]) {
-                    commits[selectedBranch].forEach(function(commit) {
-                        commitSelect.append(`<option value="${commit}">${commit}</option>`);
-                    });
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True)
