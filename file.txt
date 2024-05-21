@@ -9,12 +9,12 @@ pipeline {
         )
         choice(
             name: 'BRANCH_NAME',
-            choices: 'Loading...', // Placeholder, will be dynamically populated
+            choices: getBranches(GIT_REPO),
             description: 'Select Git Branch Name'
         )
         choice(
             name: 'COMMIT_ID',
-            choices: 'Loading...', // Placeholder, will be dynamically populated
+            choices: getCommits(GIT_REPO, BRANCH_NAME),
             description: 'Select Commit ID'
         )
     }
