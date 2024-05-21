@@ -1,50 +1,41 @@
 pipeline {
     agent any
-    
+
     parameters {
-        string(
-            name: 'GIT_REPO',
-            defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-            description: 'Input Git Repo (https) Url'
-        )
-        choice(
-            name: 'BRANCH',
-            choices: getBranches(),
-            description: 'Branch'
-        )
-        choice(
-            name: 'COMMIT_ID',
-            choices: getCommitIds(params.BRANCH),
-            description: 'COMMIT_ID'
-        )
+        string(name: 'GIT_REPO', defaultValue: '', description: 'Git repository URL')
+        choice(name: 'BRANCH_NAME', choices: [], description: 'Select Git branch')
+        choice(name: 'COMMIT_ID', choices: [], description: 'Select Commit ID')
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                script {
+                    // Fetch the selected branch and commit ID
+                    def gitRepo = params.GIT_REPO
+                    def branchName = params.BRANCH_NAME
+                    def commitId = params.COMMIT_ID
+
+                    // Clone the repository and checkout the specific commit
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: branchName]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[url: gitRepo]]
+                    ])
+
+                    sh "git checkout ${commitId}"
+                }
+            }
+        }
+
+        // Add additional build stages as needed
         stage('Build') {
             steps {
-                echo "Building branch ${params.BRANCH} at commit ${params.COMMIT_ID}"
-                // Your build steps here
+                // Your build steps go here
             }
         }
     }
-}
-
-def getBranches() {
-    def branches = []
-    def proc = "git ls-remote --heads ${params.GIT_REPO}".execute()
-    proc.in.eachLine { line ->
-        def branch = line.split()[1].replaceAll('refs/heads/', '')
-        branches << branch
-    }
-    return branches
-}
-
-def getCommitIds(branch) {
-    def commitIds = []
-    def proc = "git ls-remote ${params.GIT_REPO} refs/heads/${branch}".execute()
-    proc.in.eachLine { line ->
-        def commitId = line.split()[0]
-        commitIds << commitId
-    }
-    return commitIds
 }
