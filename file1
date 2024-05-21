@@ -1,20 +1,33 @@
 pipeline {
     agent any
-
-    environment {
-        REPO_URL = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
-    }
-
+ 
     parameters {
-        choice(name: 'BRANCH', choices: getBranches(), description: 'Select the branch')
-        choice(name: 'COMMIT_ID', choices: getCommits(params.BRANCH), description: 'Select the commit ID')
+        // Active Choices Parameter for Branches
+        choiceParam(
+            name: 'BRANCH',
+            choices: getBranches(),
+            description: 'Select the branch'
+        )
+ 
+        // Active Choices Parameter for Commit IDs
+        choiceParam(
+            name: 'COMMIT_ID',
+            description: 'Select the commit ID',
+            filterable: true,
+            script: script {
+                def branchName = BRANCH
+                if (!branchName) return ['Please select a branch']
+                return getCommits(branchName)
+            }
+        )
     }
-
+ 
     stages {
         stage('Clone Repository') {
             steps {
                 script {
-                    git url: REPO_URL, branch: params.BRANCH
+                    def repoUrl = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                    git branch: "${params.BRANCH}", url: "${repoUrl}"
                 }
             }
         }
@@ -28,28 +41,25 @@ pipeline {
         }
     }
 }
-
+ 
 def getBranches() {
     def branches = []
-    def proc = "git ls-remote --heads ${env.REPO_URL}".execute()
+    def proc = "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git".execute()
     proc.in.eachLine { line ->
         def branch = line.split()[1].replaceAll('refs/heads/', '')
         branches << branch
     }
-    return branches.join('\n')
+    return branches
 }
-
-def getCommits(branch) {
+ 
+def getCommits(branchName) {
     def commits = []
-    if (branch) {
-        def proc = "git ls-remote ${env.REPO_URL} refs/heads/${branch}".execute()
-        proc.in.eachLine { line ->
-            def commit = line.split()[0]
-            commits << commit
-        }
-        commits = commits.take(5) // Limit to the first five commits
+    def proc = "git log --pretty=format:'%H' -n 5 origin/${branchName}".execute()
+    proc.in.eachLine { line ->
+        def commit = line
+        commits << commit
     }
-    return commits.join('\n')
+    return commits
 }
 
 
