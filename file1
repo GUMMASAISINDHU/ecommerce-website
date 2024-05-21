@@ -1,36 +1,24 @@
-pipeline {
-    agent any
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch and Commit ID Dropdown</title>
+</head>
+<body>
+    <label for="branchSelect">Select Branch:</label>
+    <select id="branchSelect">
+        <option value="main">Main</option>
+        <option value="develop">Develop</option>
+        <option value="feature">Feature</option>
+    </select>
 
-    stages {
-        stage('Select Branch and Commit') {
-            steps {
-                script {
-                    // Get the branches from the repository
-                    def branches = sh(script: "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git | awk '{print \$2}' | sed 's|refs/heads/||'", returnStdout: true).trim().split("\n")
-                    
-                    // Allow user to select a branch
-                    def selectedBranch = input message: 'Select a branch', parameters: [choice(name: 'BRANCH_NAME', choices: branches.join("\n"), description: 'Select the Git branch')]
+    <label for="commitSelect">Select Commit ID:</label>
+    <select id="commitSelect">
+        <option value="">Select a commit</option>
+    </select>
 
-                    // Get the commit IDs for the selected branch
-                    def commits = sh(script: "git ls-remote https://github.com/GUMMASAISINDHU/ecommerce-website.git refs/heads/${selectedBranch} | awk '{print \$1}'", returnStdout: true).trim().split("\n")
-                    
-                    // Allow user to select a commit ID
-                    def selectedCommit = input message: 'Select a commit', parameters: [choice(name: 'COMMIT_ID', choices: commits.join("\n"), description: 'Select the commit ID')]
-
-                    echo "Selected Branch: ${selectedBranch}"
-                    echo "Selected Commit ID: ${selectedCommit}"
-
-                    // Checkout the specific commit from the selected branch
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "${selectedCommit}"]],
-                        userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git']],
-                        extensions: [[$class: 'LocalBranch', localBranch: "${selectedBranch}"]]
-                    ])
-                }
-            }
-        }
-        
-        // Additional stages can be added here
-    }
-}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
