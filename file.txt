@@ -1,26 +1,6 @@
 pipeline {
     agent any
-    
-    parameters {
-        string(
-            name: 'GIT_REPO',
-            defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-            description: 'Input Git Repo (https) Url'
-        )
-        
-        choice(
-            name: 'BRANCH_NAME',
-            choices: ['Loading...'], // Placeholder, will be dynamically populated
-            description: 'Select Git Branch Name'
-        )
-        
-        choice(
-            name: 'COMMIT_ID',
-            choices: ['Loading...'], // Placeholder, will be dynamically populated based on selected branch
-            description: 'Select Commit ID'
-        )
-    }
-    
+
     stages {
         stage('Initialize') {
             steps {
