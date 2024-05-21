@@ -1,6 +1,6 @@
 pipeline {
     agent any
-    
+
     parameters {
         // Define Active Choice Parameter for branches
         activeChoiceParam(
@@ -16,7 +16,7 @@ pipeline {
                     script: """
                         def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                         def branches = []
-                        def proc = ['git', 'ls-remote', '--heads', gitRepo].execute()
+                        def proc = "git ls-remote --heads ${gitRepo}".execute()
                         proc.text.eachLine { line ->
                             def branch = line.split('/').last()
                             branches.add(branch)
@@ -42,7 +42,9 @@ pipeline {
                     def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                     def branch = BRANCH
                     def commits = []
-                    def logProc = "git log --pretty=format:'%H %s' -n 5".execute([], new File("/tmp/repo"))
+                    def fetchProc = "git fetch origin ${branch}".execute([], new File("/tmp/repo"))
+                    fetchProc.waitFor()
+                    def logProc = "git log origin/${branch} --pretty=format:'%H %s' -n 5".execute([], new File("/tmp/repo"))
                     logProc.text.eachLine { line ->
                         commits.add(line)
                     }
@@ -51,7 +53,7 @@ pipeline {
             ]
         )
     }
-    
+
     stages {
         stage('Prepare Workspace') {
             steps {
@@ -62,7 +64,6 @@ pipeline {
                     dir('/tmp/repo') {
                         sh 'git init'
                         sh "git remote add origin https://github.com/GUMMASAISINDHU/ecommerce-website.git"
-                        sh "git fetch origin ${params.BRANCH}"
                     }
                 }
             }
