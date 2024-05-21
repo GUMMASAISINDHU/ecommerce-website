@@ -1,26 +1,50 @@
-properties([
-        [$class: 'JobRestrictionProperty'], parameters([validatingString(defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website', description: 'Input Git Repo (https) Url', failedValidationMessage: 'Invalid Git Url. Retry again', name: 'GIT_REPO', regex: 'https://.*'), [$class: 'CascadeChoiceParameter', choiceType: 'PT_SINGLE_SELECT', description: 'Select Git Branch Name', filterLength: 1, filterable: false, name: 'BRANCH_NAME', randomName: 'choice-parameter-8292706885056518', referencedParameters: 'GIT_REPO', script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: 'return[\'Error - Unable to retrive Branch name\']'], script: [classpath: [], sandbox: false, script: ''
-                            'def GIT_REPO_SRC = GIT_REPO.tokenize(\'/\')
-                            GIT_REPO_FULL = GIT_REPO_SRC[-2] + \'/\' + GIT_REPO_SRC[-1]
-                            def GET_LIST = ("git ls-remote --heads git@github.com:${GIT_REPO_FULL}").execute()
-                            GET_LIST.waitFor()
-                            BRANCH_LIST = GET_LIST.in.text.readLines().collect {
-                                it.split()[1].replaceAll("refs/heads/", "").replaceAll("refs/tags/", "").replaceAll("\\\\^\\\\{\\\\}", "")
-                            }
-                            return BRANCH_LIST ''
-                            ']]]]), throttleJobProperty(categories: [], limitOneJobWithMatchingParams: false, maxConcurrentPerNode: 0, maxConcurrentTotal: 0, paramsToUseForLimit: '
-                            ', throttleEnabled: false, throttleOption: '
-                            project '), [$class: '
-                            JobLocalConfiguration ', changeReasonComment: '
-                            ']])
-    try {
-        node('master') {
-            stage('Print Variables') {
-                echo "Branch Name: ${BRANCH_NAME}"
+pipeline {
+    agent any
+    
+    parameters {
+        string(
+            name: 'GIT_REPO',
+            defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+            description: 'Input Git Repo (https) Url'
+        )
+        choice(
+            name: 'BRANCH',
+            choices: getBranches(),
+            description: 'Branch'
+        )
+        choice(
+            name: 'COMMIT_ID',
+            choices: getCommitIds(params.BRANCH),
+            description: 'COMMIT_ID'
+        )
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                echo "Building branch ${params.BRANCH} at commit ${params.COMMIT_ID}"
+                // Your build steps here
             }
+        }
     }
-    catch (e) {
-        currentBuild.result = "FAILURE"
-        print e.getMessage();
-        print e.getStackTrace();
+}
+
+def getBranches() {
+    def branches = []
+    def proc = "git ls-remote --heads ${params.GIT_REPO}".execute()
+    proc.in.eachLine { line ->
+        def branch = line.split()[1].replaceAll('refs/heads/', '')
+        branches << branch
     }
+    return branches
+}
+
+def getCommitIds(branch) {
+    def commitIds = []
+    def proc = "git ls-remote ${params.GIT_REPO} refs/heads/${branch}".execute()
+    proc.in.eachLine { line ->
+        def commitId = line.split()[0]
+        commitIds << commitId
+    }
+    return commitIds
+}
