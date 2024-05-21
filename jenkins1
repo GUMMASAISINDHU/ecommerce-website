@@ -1,20 +1,34 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'BRANCH', choices: ['loading...'], description: 'Select a branch')
+        choice(name: 'COMMIT', choices: ['loading...'], description: 'Select a commit')
+    }
+
     stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    def branch = params.BRANCH
+                    def commit = params.COMMIT.split()[0] // Get commit hash
+
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "refs/heads/${branch}"]],
+                        userRemoteConfigs: [[url: 'https://your-repo-url.git']]
+                    ])
+
+                    // Checkout the specific commit
+                    sh "git checkout ${commit}"
+                }
+            }
+        }
+
         stage('Build') {
             steps {
-                echo 'Building..'
-            }
-        }
-        stage('Test') {
-            steps {
-                echo 'Testing..'
-            }
-        }
-        stage('Deploy') {
-            steps {
-                echo 'Deploying....'
+                // Your build steps here
+                echo 'Building...'
             }
         }
     }
