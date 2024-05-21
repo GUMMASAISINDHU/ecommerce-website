@@ -1,71 +1,69 @@
 pipeline {
     agent any
- 
-    environment {
-        // Define environment variables
-        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-11.0.23.0.9-3.el9.x86_64"  // Path to Java 11
-        MAVEN_HOME = "/usr/share/maven" // Path to Maven
-    }
- 
+    
     parameters {
-        // Define input parameters for the pipeline
-        choice(
-            name: 'ENVIRONMENT',
-            choices: ['dev', 'uat', 'prod'],
-            description: 'Select the target environment: dev, uat, or prod.'
+        string(
+            name: 'GIT_REPO',
+            defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+            description: 'Input Git Repo (https) Url'
         )
+        
         choice(
-            name: 'BRANCH',
-            choices: ['master', 'development', 'feature branch'],
-            description: 'Select the branch to build from: main, development, or feature branch.'
+            name: 'BRANCH_NAME',
+            choices: ['main, br1, br2, release'], // Placeholder, will be dynamically populated
+            description: 'Select Git Branch Name'
+        )
+        
+        choice(
+            name: 'COMMIT_ID',
+            choices: ['a983957,2f9d7e9,152a6f3,9b96c86'], // Placeholder, will be dynamically populated based on selected branch
+            description: 'Select Commit ID'
         )
     }
- 
+    
     stages {
-        stage('Checkout') {
+        stage('Initialize') {
             steps {
-                echo 'Checking out the code...'
-                // Checkout the selected branch
-                checkout([$class: 'GitSCM', branches: [[name: "refs/heads/${params.BRANCH}"]],
-                          doGenerateSubmoduleConfigurations: false,
-                          extensions: [],
-                          userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/demo-java11.git']]])
+                script {
+                    // Populate Branches
+                    def branches = getBranches(params.GIT_REPO)
+                    BRANCH_NAME = branches.size() > 0 ? branches[0] : 'No branches found'
+                    
+                    // Populate Commit IDs based on selected branch
+                    if (branches.size() > 0) {
+                        def commits = getCommits(params.GIT_REPO, BRANCH_NAME)
+                        COMMIT_ID = commits.size() > 0 ? commits[0] : 'No commits found'
+                    } else {
+                        COMMIT_ID = 'No commits found'
+                    }
+                }
             }
         }
- 
-        stage('Build and Test') {
+        stage('Display Branches') {
             steps {
-                echo "Building and testing the project for environment: ${params.ENVIRONMENT}..."
-                sh "${MAVEN_HOME}/bin/mvn clean install"
-                sh "${MAVEN_HOME}/bin/mvn test"
+                echo "Available branches:"
+                echo BRANCH_NAME
             }
         }
- 
-        stage('Deploy') {
+        stage('Display Commit IDs') {
             steps {
-                echo "Deploying the project to ${params.ENVIRONMENT} environment..."
-                // Add your deployment commands here. For example:
-                sh "${MAVEN_HOME}/bin/mvn deploy -P${params.ENVIRONMENT}"
+                echo "Latest 5 commit IDs for branch ${BRANCH_NAME}:"
+                echo COMMIT_ID
+            }
+        }
+        stage('Build') {
+            steps {
+                echo "Building branch ${BRANCH_NAME} at commit ${COMMIT_ID}"
+                // Your build steps here
             }
         }
     }
- 
-    post {
-        always {
-            // This block runs at the end of the pipeline regardless of the outcome
-            // Collect test reports (if tests were run)
-            junit 'target/surefire-reports/**/*.xml' // Collect and report test results
- 
-            // Archive artifacts (if needed)
-            archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
-        }
- 
-        success {
-            echo 'Pipeline completed successfully!'
-        }
- 
-        failure {
-            echo 'Pipeline failed.'
-        }
-    }
+}
+
+def getBranches(repo) {
+    // Implement getBranches method
+}
+
+def getCommits(repo, branch) {
+    // Implement getCommits method
 }
