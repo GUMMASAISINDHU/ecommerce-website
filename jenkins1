@@ -42,9 +42,7 @@ pipeline {
                     def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                     def branch = BRANCH
                     def commits = []
-                    def branchProc = ['git', 'ls-remote', gitRepo, "refs/heads/\$branch"].execute()
-                    def branchHash = branchProc.text.split()[0]
-                    def logProc = ['git', 'log', '--pretty=format:%H %s', '-n', '5', branchHash].execute()
+                    def logProc = "git log --pretty=format:'%H %s' -n 5".execute([], new File("/tmp/repo"))
                     logProc.text.eachLine { line ->
                         commits.add(line)
                     }
@@ -55,6 +53,20 @@ pipeline {
     }
     
     stages {
+        stage('Prepare Workspace') {
+            steps {
+                script {
+                    // Prepare the workspace for git operations
+                    sh 'rm -rf /tmp/repo'
+                    sh 'mkdir -p /tmp/repo'
+                    dir('/tmp/repo') {
+                        sh 'git init'
+                        sh "git remote add origin https://github.com/GUMMASAISINDHU/ecommerce-website.git"
+                        sh "git fetch origin ${params.BRANCH}"
+                    }
+                }
+            }
+        }
         stage('Clone Repository') {
             steps {
                 script {
