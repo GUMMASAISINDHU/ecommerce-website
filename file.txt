@@ -1,114 +1,106 @@
 pipeline {
     agent any
-
+    
     parameters {
         string(
             name: 'GIT_REPO',
             defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
             description: 'Input Git Repo (https) Url'
         )
+        
         choice(
             name: 'BRANCH_NAME',
-            choices: getBranches(GIT_REPO),
+            choices: ['Loading...'], // Placeholder, will be dynamically populated
             description: 'Select Git Branch Name'
         )
+        
         choice(
             name: 'COMMIT_ID',
-            choices: getCommits(GIT_REPO, BRANCH_NAME),
+            choices: ['Loading...'], // Placeholder, will be dynamically populated based on selected branch
             description: 'Select Commit ID'
         )
     }
-
+    
     stages {
         stage('Initialize') {
             steps {
                 script {
-                    // Use the Active Choices Plugin script to dynamically populate choices
-                    properties([
-                        parameters([
-                            string(
-                                name: 'GIT_REPO',
-                                defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
-                                description: 'Input Git Repo (https) Url'
-                            ),
-                            [$class: 'CascadeChoiceParameter', 
-                             choiceType: 'PT_SINGLE_SELECT', 
-                             description: 'Select Git Branch Name', 
-                             filterLength: 1, 
-                             filterable: false, 
-                             name: 'BRANCH_NAME', 
-                             randomName: 'choice-parameter-8292706885056518', 
-                             referencedParameters: 'GIT_REPO', 
-                             script: [
-                                 $class: 'GroovyScript', 
-                                 fallbackScript: [
-                                     classpath: [], 
-                                     sandbox: false, 
-                                     script: 'return[\'Error - Unable to retrieve Branch name\']'
-                                 ], 
-                                 script: [
-                                     classpath: [], 
-                                     sandbox: false, 
-                                     script: '''
-                                     def GIT_REPO_SRC = GIT_REPO.tokenize('/')
-                                     def GIT_REPO_FULL = GIT_REPO_SRC[-2] + '/' + GIT_REPO_SRC[-1]
-                                     def GET_LIST = ("git ls-remote --heads https://github.com/${GIT_REPO_FULL}").execute()
-                                     GET_LIST.waitFor()
-                                     BRANCH_LIST = GET_LIST.in.text.readLines().collect {
-                                         it.split()[1].replaceAll("refs/heads/", "").replaceAll("refs/tags/", "").replaceAll("\\\\^\\\\{\\\\}", "")
-                                     }
-                                     return BRANCH_LIST
-                                     '''
-                                 ]
-                             ]
-                            ],
-                            [$class: 'CascadeChoiceParameter', 
-                             choiceType: 'PT_SINGLE_SELECT', 
-                             description: 'Select Commit ID', 
-                             filterLength: 1, 
-                             filterable: false, 
-                             name: 'COMMIT_ID', 
-                             randomName: 'choice-parameter-8292706885056518', 
-                             referencedParameters: 'GIT_REPO,BRANCH_NAME', 
-                             script: [
-                                 $class: 'GroovyScript', 
-                                 fallbackScript: [
-                                     classpath: [], 
-                                     sandbox: false, 
-                                     script: 'return[\'Error - Unable to retrieve Commit ID\']'
-                                 ], 
-                                 script: [
-                                     classpath: [], 
-                                     sandbox: false, 
-                                     script: '''
-                                     def getCommits(branch) {
-                                         def commits = []
-                                         if (branch) {
-                                             def GIT_REPO_SRC = GIT_REPO.tokenize('/')
-                                             def GIT_REPO_FULL = GIT_REPO_SRC[-2] + '/' + GIT_REPO_SRC[-1]
-                                             def proc = "git ls-remote https://github.com/${GIT_REPO_FULL} refs/heads/${branch}".execute()
-                                             proc.waitFor()
-                                             commits = proc.in.text.readLines().collect { line ->
-                                                 line.split()[0] + " " + line.split()[1..-1].join(" ") // Include metadata
-                                             }.take(5) // Get only the latest 5 commits
-                                         }
-                                         return commits
-                                     }
-                                     return getCommits(BRANCH_NAME)
-                                     '''
-                                 ]
-                             ]
-                            ]
-                        ])
-                    ])
+                    // Populate Branches
+                    BRANCH_NAME = getBranches(GIT_REPO)[0] // Set default to first branch
+                }
+            }
+        }
+        stage('Display Branches') {
+            steps {
+                script {
+                    echo "Available branches:"
+                    getBranches(GIT_REPO).each { branch ->
+                        echo "- ${branch}"
+                    }
+                }
+            }
+        }
+        stage('Fetch Commits') {
+            when {
+                expression {
+                    return BRANCH_NAME != 'Loading...'
+                }
+            }
+            steps {
+                script {
+                    // Populate Commit IDs based on selected branch
+                    COMMIT_ID = getCommits(GIT_REPO, BRANCH_NAME)[0] // Set default to first commit
+                }
+            }
+        }
+        stage('Display Commit IDs') {
+            when {
+                expression {
+                    return COMMIT_ID != 'Loading...'
+                }
+            }
+            steps {
+                script {
+                    echo "Latest 5 commit IDs for branch ${BRANCH_NAME}:"
+                    getCommits(GIT_REPO, BRANCH_NAME).each { commitId ->
+                        echo "- ${commitId}"
+                    }
                 }
             }
         }
         stage('Build') {
             steps {
-                echo "Building branch ${params.BRANCH_NAME} at commit ${params.COMMIT_ID}"
+                echo "Building branch ${BRANCH_NAME} at commit ${COMMIT_ID}"
                 // Your build steps here
             }
         }
     }
 }
+
+def getBranches(repo) {
+    def gitRepo = repo.tokenize('/')[3..-1].join('/')
+    def branches = []
+    def proc = "git ls-remote --heads https://github.com/${gitRepo}".execute()
+    proc.waitFor()
+    proc.in.eachLine { line ->
+        def branch = line.split()[1].replaceAll('refs/heads/', '')
+        branches << branch
+    }
+    return branches
+}
+
+def getCommits(repo, branch) {
+    def gitRepo = repo.tokenize('/')[3..-1].join('/')
+    def commits = []
+    if (branch) {
+        def proc = "git ls-remote https://github.com/${gitRepo} refs/heads/${branch}".execute()
+        proc.waitFor()
+        proc.in.eachLine { line ->
+            def commitId = line.split()[0]
+            commits << commitId
+        }
+    }
+    return commits.take(5) // Get only the latest 5 commits
+}
+
+                  
