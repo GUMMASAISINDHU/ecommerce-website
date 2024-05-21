@@ -2,10 +2,12 @@ pipeline {
     agent any
     
     parameters {
-        // Define parameters
+        // Define Active Choice Parameter for branches
         activeChoiceParam(
             name: 'BRANCH',
             description: 'Select the branch',
+            choiceType: 'SINGLE_SELECT',
+            filterable: true,
             script: [
                 $class: 'GroovyScript',
                 script: [
@@ -14,54 +16,71 @@ pipeline {
                     script: """
                         def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
                         def branches = []
-                        sh "git ls-remote --heads \$gitRepo | awk -F '/' '{print \$NF}'" | read output
-                        branches = output.tokenize('\\n')
+                        def proc = ['git', 'ls-remote', '--heads', gitRepo].execute()
+                        proc.text.eachLine { line ->
+                            def branch = line.split('/').last()
+                            branches.add(branch)
+                        }
                         return branches
                     """
                 ]
             ]
         )
-        activeChoiceParam(
+        // Define Active Choice Reactive Parameter for commits
+        activeChoiceReactiveParam(
             name: 'COMMIT_ID',
-            description: 'Select the commit',
-            script: [
-                $class: 'GroovyScript',
-                script: [
-                    classpath: [],
-                    sandbox: true,
-                    script: """
-                        def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
-                        def branch = BRANCH ?: 'master'
-                        def commits = []
-                        sh "git ls-remote \$gitRepo refs/heads/\$branch | awk '{print \$1}'" | read output
-                        sh "git log --pretty=format:'%H %s' -n 5 \$output" | read commitOutput
-                        commits = commitOutput.tokenize('\\n')
-                        return commits
-                    """
-                ]
+            description: 'Select the commit ID',
+            choiceType: 'SINGLE_SELECT',
+            filterable: true,
+            groovyScript: [
+                classpath: [],
+                fallbackScript: "return ['ERROR']",
+                script: """
+                    if (!BRANCH) {
+                        return ['Select a branch first']
+                    }
+                    def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                    def branch = BRANCH
+                    def commits = []
+                    def branchProc = ['git', 'ls-remote', gitRepo, "refs/heads/\$branch"].execute()
+                    def branchHash = branchProc.text.split()[0]
+                    def logProc = ['git', 'log', '--pretty=format:%H %s', '-n', '5', branchHash].execute()
+                    logProc.text.eachLine { line ->
+                        commits.add(line)
+                    }
+                    return commits
+                """
             ]
         )
     }
     
     stages {
-        stage('Clone repository') {
+        stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository
+                    // Clone the repository and checkout the specified branch
                     def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
-                    def branch = params.BRANCH ?: 'master'
-                    checkout([$class: 'GitSCM', branches: [[name: "*/$branch"]], userRemoteConfigs: [[url: gitRepo]]])
+                    def branch = params.BRANCH
+                    checkout([$class: 'GitSCM', branches: [[name: "*/${branch}"]], userRemoteConfigs: [[url: gitRepo]]])
                 }
             }
         }
-        
-        stage('Execute with selected code') {
+        stage('Checkout Specific Commit') {
             steps {
                 script {
-                    def commitId = params.COMMIT_ID
                     // Checkout the specific commit
-                    sh "git checkout $commitId"
-                    // Execute your pipeline steps with the checked out code
+                    def commitId = params.COMMIT_ID.split(' ')[0]
+                    sh "git checkout ${commitId}"
+                }
+            }
+        }
+        stage('Run Pipeline') {
+            steps {
+                script {
+                    // Add your pipeline steps here that should run on the specific commit
+                    echo "Running pipeline on commit ${params.COMMIT_ID}"
+                    // Example step
+                    sh "echo 'Pipeline executed on commit: ${params.COMMIT_ID}'"
                 }
             }
         }
