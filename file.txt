@@ -1,24 +1,114 @@
-import groovy.json.JsonSlurper
+pipeline {
+    agent any
 
-// Replace 'your-github-username' and 'your-token' with appropriate values
-def username = "your-github-username"
-def token = "your-token"
-def repository = "your-repository-name" // Specify the repository
+    parameters {
+        string(
+            name: 'GIT_REPO',
+            defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+            description: 'Input Git Repo (https) Url'
+        )
+        choice(
+            name: 'BRANCH_NAME',
+            choices: 'Loading...', // Placeholder, will be dynamically populated
+            description: 'Select Git Branch Name'
+        )
+        choice(
+            name: 'COMMIT_ID',
+            choices: 'Loading...', // Placeholder, will be dynamically populated
+            description: 'Select Commit ID'
+        )
+    }
 
-// Fetch the user's input (prefix) from the query
-def prefix = params['value']?.toLowerCase() ?: ""
-
-// Fetch branches from the repository
-def url = "https://api.github.com/repos/${username}/${repository}/branches"
-def connection = new URL(url).openConnection()
-connection.setRequestProperty("Authorization", "token ${token}")
-def response = connection.inputStream.text
-def branches = new JsonSlurper().parseText(response)
-
-// Filter branches based on the prefix
-def matchingBranches = branches.findAll { branch ->
-    branch.name.toLowerCase().startsWith(prefix)
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    // Use the Active Choices Plugin script to dynamically populate choices
+                    properties([
+                        parameters([
+                            string(
+                                name: 'GIT_REPO',
+                                defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website.git',
+                                description: 'Input Git Repo (https) Url'
+                            ),
+                            [$class: 'CascadeChoiceParameter', 
+                             choiceType: 'PT_SINGLE_SELECT', 
+                             description: 'Select Git Branch Name', 
+                             filterLength: 1, 
+                             filterable: false, 
+                             name: 'BRANCH_NAME', 
+                             randomName: 'choice-parameter-8292706885056518', 
+                             referencedParameters: 'GIT_REPO', 
+                             script: [
+                                 $class: 'GroovyScript', 
+                                 fallbackScript: [
+                                     classpath: [], 
+                                     sandbox: false, 
+                                     script: 'return[\'Error - Unable to retrieve Branch name\']'
+                                 ], 
+                                 script: [
+                                     classpath: [], 
+                                     sandbox: false, 
+                                     script: '''
+                                     def GIT_REPO_SRC = GIT_REPO.tokenize('/')
+                                     def GIT_REPO_FULL = GIT_REPO_SRC[-2] + '/' + GIT_REPO_SRC[-1]
+                                     def GET_LIST = ("git ls-remote --heads https://github.com/${GIT_REPO_FULL}").execute()
+                                     GET_LIST.waitFor()
+                                     BRANCH_LIST = GET_LIST.in.text.readLines().collect {
+                                         it.split()[1].replaceAll("refs/heads/", "").replaceAll("refs/tags/", "").replaceAll("\\\\^\\\\{\\\\}", "")
+                                     }
+                                     return BRANCH_LIST
+                                     '''
+                                 ]
+                             ]
+                            ],
+                            [$class: 'CascadeChoiceParameter', 
+                             choiceType: 'PT_SINGLE_SELECT', 
+                             description: 'Select Commit ID', 
+                             filterLength: 1, 
+                             filterable: false, 
+                             name: 'COMMIT_ID', 
+                             randomName: 'choice-parameter-8292706885056518', 
+                             referencedParameters: 'GIT_REPO,BRANCH_NAME', 
+                             script: [
+                                 $class: 'GroovyScript', 
+                                 fallbackScript: [
+                                     classpath: [], 
+                                     sandbox: false, 
+                                     script: 'return[\'Error - Unable to retrieve Commit ID\']'
+                                 ], 
+                                 script: [
+                                     classpath: [], 
+                                     sandbox: false, 
+                                     script: '''
+                                     def getCommits(branch) {
+                                         def commits = []
+                                         if (branch) {
+                                             def GIT_REPO_SRC = GIT_REPO.tokenize('/')
+                                             def GIT_REPO_FULL = GIT_REPO_SRC[-2] + '/' + GIT_REPO_SRC[-1]
+                                             def proc = "git ls-remote https://github.com/${GIT_REPO_FULL} refs/heads/${branch}".execute()
+                                             proc.waitFor()
+                                             commits = proc.in.text.readLines().collect { line ->
+                                                 line.split()[0] + " " + line.split()[1..-1].join(" ") // Include metadata
+                                             }.take(5) // Get only the latest 5 commits
+                                         }
+                                         return commits
+                                     }
+                                     return getCommits(BRANCH_NAME)
+                                     '''
+                                 ]
+                             ]
+                            ]
+                        ])
+                    ])
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                echo "Building branch ${params.BRANCH_NAME} at commit ${params.COMMIT_ID}"
+                // Your build steps here
+            }
+        }
+    }
 }
-
-// Return a list of branch names that match the prefix
-return matchingBranches.collect { it.name }
