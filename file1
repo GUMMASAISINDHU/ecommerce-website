@@ -3,22 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Branch and Commit ID Dropdown</title>
+    <title>Branch and Commit ID Selection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 20px;
+        }
+        .dropdowns {
+            display: none;
+            margin-top: 20px;
+        }
+        label, select {
+            margin-right: 10px;
+        }
+        button {
+            padding: 5px 10px;
+        }
+    </style>
 </head>
 <body>
-    <label for="branchSelect">Select Branch:</label>
-    <select id="branchSelect">
-        <option value="main">Main</option>
-        <option value="develop">Develop</option>
-        <option value="feature">Feature</option>
-    </select>
+    <div class="container">
+        <button id="buildButton">Build</button>
+        <div class="dropdowns" id="dropdownContainer">
+            <label for="branchSelect">Select Branch:</label>
+            <select id="branchSelect">
+                <option value="">Select a branch</option>
+                <option value="main">Main</option>
+                <option value="develop">Develop</option>
+                <option value="feature">Feature</option>
+            </select>
 
-    <label for="commitSelect">Select Commit ID:</label>
-    <select id="commitSelect">
-        <option value="">Select a commit</option>
-    </select>
+            <label for="commitSelect">Select Commit ID:</label>
+            <select id="commitSelect">
+                <option value="">Select a commit</option>
+            </select>
+        </div>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="script.js"></script>
+    <script>
+        $(document).ready(function() {
+            const commits = {
+                main: ["commit1_main", "commit2_main", "commit3_main"],
+                develop: ["commit1_develop", "commit2_develop", "commit3_develop"],
+                feature: ["commit1_feature", "commit2_feature", "commit3_feature"]
+            };
+
+            $('#buildButton').click(function() {
+                $('#dropdownContainer').show();
+            });
+
+            $('#branchSelect').change(function() {
+                const selectedBranch = $(this).val();
+                const commitSelect = $('#commitSelect');
+
+                commitSelect.empty(); // Clear existing options
+                commitSelect.append('<option value="">Select a commit</option>');
+
+                if (selectedBranch && commits[selectedBranch]) {
+                    commits[selectedBranch].forEach(function(commit) {
+                        commitSelect.append(`<option value="${commit}">${commit}</option>`);
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
