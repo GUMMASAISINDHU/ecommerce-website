@@ -1,65 +1,51 @@
 pipeline {
     agent any
  
-    parameters {
-        // Active Choices Parameter for Branches
-        choiceParam(
-            name: 'BRANCH',
-            choices: getBranches(),
-            description: 'Select the branch'
-        )
- 
-        // Active Choices Parameter for Commit IDs
-        choiceParam(
-            name: 'COMMIT_ID',
-            description: 'Select the commit ID',
-            filterable: true,
-            script: script {
-                def branchName = BRANCH
-                if (!branchName) return ['Please select a branch']
-                return getCommits(branchName)
-            }
-        )
-    }
- 
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
                 script {
-                    def repoUrl = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
-                    git branch: "${params.BRANCH}", url: "${repoUrl}"
+                    // Fetch the latest commit IDs from the specified branch
+                    def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website.git"
+                    def branchName = "main" // Specify the branch name or use params.BRANCH if parameterized
+                    def lastFiveCommits = sh(
+                        script: "git ls-remote --heads ${gitUrl} ${branchName}",
+                        returnStdout: true
+                    ).trim().split("\n")
+ 
+                    // Extract commit hashes
+                    def commitChoices = lastFiveCommits.collect { line ->
+                        line.split()[0]
+                    }
+ 
+                    // Prompt the user to select one of the latest commit IDs
+                    def chosenCommit = input(
+                        message: 'Please select a commit to run the pipeline on:',
+                        parameters: [
+                            choice(
+                                name: 'COMMIT_ID',
+                                choices: commitChoices.join("\n"),
+                                description: 'Select a commit ID to build:'
+                            )
+                        ]
+                    )
+ 
+                    // Checkout the chosen commit
+                    sh "git checkout ${chosenCommit}"
                 }
             }
         }
-        stage('Build') {
+ 
+        stage ('Build') {
             steps {
-                script {
-                    echo "Building branch ${params.BRANCH} at commit ${params.COMMIT_ID}"
-                    // Your build steps here
-                }
+                // Your build steps here
+            }
+        }
+ 
+        stage ('Deploy to Tomcat server') {
+            steps {
+                // Your deployment steps here
             }
         }
     }
 }
- 
-def getBranches() {
-    def branches = []
-    def proc = "git ls-remote --heads https://github.com/GUMMASAISINDHU/ecommerce-website.git".execute()
-    proc.in.eachLine { line ->
-        def branch = line.split()[1].replaceAll('refs/heads/', '')
-        branches << branch
-    }
-    return branches
-}
- 
-def getCommits(branchName) {
-    def commits = []
-    def proc = "git log --pretty=format:'%H' -n 5 origin/${branchName}".execute()
-    proc.in.eachLine { line ->
-        def commit = line
-        commits << commit
-    }
-    return commits
-}
-
-
