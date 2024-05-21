@@ -1,34 +1,68 @@
 pipeline {
     agent any
-
+    
     parameters {
-        choice(name: 'BRANCH', choices: ['loading...'], description: 'Select a branch')
-        choice(name: 'COMMIT', choices: ['loading...'], description: 'Select a commit')
+        // Define parameters
+        activeChoiceParam(
+            name: 'BRANCH',
+            description: 'Select the branch',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    classpath: [],
+                    sandbox: true,
+                    script: """
+                        def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                        def branches = []
+                        sh "git ls-remote --heads \$gitRepo | awk -F '/' '{print \$NF}'" | read output
+                        branches = output.tokenize('\\n')
+                        return branches
+                    """
+                ]
+            ]
+        )
+        activeChoiceParam(
+            name: 'COMMIT_ID',
+            description: 'Select the commit',
+            script: [
+                $class: 'GroovyScript',
+                script: [
+                    classpath: [],
+                    sandbox: true,
+                    script: """
+                        def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                        def branch = BRANCH ?: 'master'
+                        def commits = []
+                        sh "git ls-remote \$gitRepo refs/heads/\$branch | awk '{print \$1}'" | read output
+                        sh "git log --pretty=format:'%H %s' -n 5 \$output" | read commitOutput
+                        commits = commitOutput.tokenize('\\n')
+                        return commits
+                    """
+                ]
+            ]
+        )
     }
-
+    
     stages {
-        stage('Checkout') {
+        stage('Clone repository') {
             steps {
                 script {
-                    def branch = params.BRANCH
-                    def commit = params.COMMIT.split()[0] // Get commit hash
-
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "refs/heads/${branch}"]],
-                        userRemoteConfigs: [[url: 'https://your-repo-url.git']]
-                    ])
-
-                    // Checkout the specific commit
-                    sh "git checkout ${commit}"
+                    // Clone the repository
+                    def gitRepo = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+                    def branch = params.BRANCH ?: 'master'
+                    checkout([$class: 'GitSCM', branches: [[name: "*/$branch"]], userRemoteConfigs: [[url: gitRepo]]])
                 }
             }
         }
-
-        stage('Build') {
+        
+        stage('Execute with selected code') {
             steps {
-                // Your build steps here
-                echo 'Building...'
+                script {
+                    def commitId = params.COMMIT_ID
+                    // Checkout the specific commit
+                    sh "git checkout $commitId"
+                    // Execute your pipeline steps with the checked out code
+                }
             }
         }
     }
