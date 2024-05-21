@@ -1,25 +1,50 @@
-from flask import Flask, render_template, request
-import subprocess
+pipeline {
+    agent any
 
-app = Flask(__name__)
+    environment {
+        REPO_URL = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+    }
 
-def get_branches_and_commits():
-    branches = subprocess.check_output(["git", "branch", "-a"]).decode('utf-8').split('\n')
-    branches = [branch.strip() for branch in branches if branch]
-    commits = {branch: subprocess.check_output(["git", "rev-parse", branch]).decode('utf-8').strip() for branch in branches}
-    return branches, commits
+    parameters {
+        choice(name: 'BRANCH', choices: getBranches(), description: 'Select the branch')
+        choice(name: 'COMMIT_ID', choices: getCommits(params.BRANCH), description: 'Select the commit ID')
+    }
 
-@app.route('/')
-def index():
-    branches, commits = get_branches_and_commits()
-    return render_template('index.html', branches=branches, commits=commits)
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    git url: REPO_URL, branch: params.BRANCH
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    // Your build steps here
+                }
+            }
+        }
+    }
+}
 
-@app.route('/build', methods=['POST'])
-def build():
-    branch = request.form['branch']
-    commit_id = request.form['commit_id']
-    # Trigger the build process with the selected branch and commit ID
-    return f"Triggered build for branch {branch} at commit {commit_id}"
+def getBranches() {
+    def branches = []
+    def proc = "git ls-remote --heads ${env.REPO_URL}".execute()
+    proc.in.eachLine { line ->
+        def branch = line.split()[1].replaceAll('refs/heads/', '')
+        branches << branch
+    }
+    return branches.join('\n')
+}
 
-if __name__ == '__main__':
-    app.run(debug=True)
+def getCommits(branch) {
+    if (!branch) return 'Select a branch first'
+    def commits = []
+    def proc = "git ls-remote ${env.REPO_URL} refs/heads/${branch}".execute()
+    proc.in.eachLine { line ->
+        def commit = line.split()[0]
+        commits << commit
+    }
+    return commits.join('\n')
+}
