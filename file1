@@ -1,51 +1,26 @@
-pipeline {
-    agent any
- 
-    stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    // Fetch the latest commit IDs from the specified branch
-                    def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website.git"
-                    def branchName = "main" // Specify the branch name or use params.BRANCH if parameterized
-                    def lastFiveCommits = sh(
-                        script: "git ls-remote --heads ${gitUrl} ${branchName}",
-                        returnStdout: true
-                    ).trim().split("\n")
- 
-                    // Extract commit hashes
-                    def commitChoices = lastFiveCommits.collect { line ->
-                        line.split()[0]
-                    }
- 
-                    // Prompt the user to select one of the latest commit IDs
-                    def chosenCommit = input(
-                        message: 'Please select a commit to run the pipeline on:',
-                        parameters: [
-                            choice(
-                                name: 'COMMIT_ID',
-                                choices: commitChoices.join("\n"),
-                                description: 'Select a commit ID to build:'
-                            )
-                        ]
-                    )
- 
-                    // Checkout the chosen commit
-                    sh "git checkout ${chosenCommit}"
-                }
+properties([
+        [$class: 'JobRestrictionProperty'], parameters([validatingString(defaultValue: 'https://github.com/GUMMASAISINDHU/ecommerce-website', description: 'Input Git Repo (https) Url', failedValidationMessage: 'Invalid Git Url. Retry again', name: 'GIT_REPO', regex: 'https://.*'), [$class: 'CascadeChoiceParameter', choiceType: 'PT_SINGLE_SELECT', description: 'Select Git Branch Name', filterLength: 1, filterable: false, name: 'BRANCH_NAME', randomName: 'choice-parameter-8292706885056518', referencedParameters: 'GIT_REPO', script: [$class: 'GroovyScript', fallbackScript: [classpath: [], sandbox: false, script: 'return[\'Error - Unable to retrive Branch name\']'], script: [classpath: [], sandbox: false, script: ''
+                            'def GIT_REPO_SRC = GIT_REPO.tokenize(\'/\')
+                            GIT_REPO_FULL = GIT_REPO_SRC[-2] + \'/\' + GIT_REPO_SRC[-1]
+                            def GET_LIST = ("git ls-remote --heads git@github.com:${GIT_REPO_FULL}").execute()
+                            GET_LIST.waitFor()
+                            BRANCH_LIST = GET_LIST.in.text.readLines().collect {
+                                it.split()[1].replaceAll("refs/heads/", "").replaceAll("refs/tags/", "").replaceAll("\\\\^\\\\{\\\\}", "")
+                            }
+                            return BRANCH_LIST ''
+                            ']]]]), throttleJobProperty(categories: [], limitOneJobWithMatchingParams: false, maxConcurrentPerNode: 0, maxConcurrentTotal: 0, paramsToUseForLimit: '
+                            ', throttleEnabled: false, throttleOption: '
+                            project '), [$class: '
+                            JobLocalConfiguration ', changeReasonComment: '
+                            ']])
+    try {
+        node('master') {
+            stage('Print Variables') {
+                echo "Branch Name: ${BRANCH_NAME}"
             }
-        }
- 
-        stage ('Build') {
-            steps {
-                // Your build steps here
-            }
-        }
- 
-        stage ('Deploy to Tomcat server') {
-            steps {
-                // Your deployment steps here
-            }
-        }
     }
-}
+    catch (e) {
+        currentBuild.result = "FAILURE"
+        print e.getMessage();
+        print e.getStackTrace();
+    }
