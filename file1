@@ -1,23 +1,13 @@
 pipeline {
     agent any
 
-    parameters {
-        // Active Choices Parameter for Branches
-        choiceParam(
-            name: 'BRANCH',
-            choices: getBranches(),
-            description: 'Select the branch'
-        )
-        // Active Choices Parameter for Commit IDs
-        choiceParam(
-            name: 'COMMIT_ID',
-            choices: getCommits(),
-            description: 'Select the commit ID'
-        )
-    }
-
     environment {
         REPO_URL = 'https://github.com/GUMMASAISINDHU/ecommerce-website.git'
+    }
+
+    parameters {
+        choice(name: 'BRANCH', choices: getBranches(), description: 'Select the branch')
+        choice(name: 'COMMIT_ID', choices: getCommits(params.BRANCH), description: 'Select the commit ID')
     }
 
     stages {
@@ -46,18 +36,20 @@ def getBranches() {
         def branch = line.split()[1].replaceAll('refs/heads/', '')
         branches << branch
     }
-    return branches
+    return branches.join('\n')
 }
 
-def getCommits() {
+def getCommits(branch) {
     def commits = []
-    if (params.BRANCH) {
-        def proc = "git ls-remote ${env.REPO_URL} refs/heads/${params.BRANCH}".execute()
+    if (branch) {
+        def proc = "git ls-remote ${env.REPO_URL} refs/heads/${branch}".execute()
         proc.in.eachLine { line ->
             def commit = line.split()[0]
             commits << commit
         }
+        commits = commits.take(5) // Limit to the first five commits
     }
-    return commits
+    return commits.join('\n')
 }
+
 
