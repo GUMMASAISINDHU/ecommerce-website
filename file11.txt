@@ -10,13 +10,13 @@ pipeline {
         
         choice(
             name: 'BRANCH_NAME',
-            choices: ['main, br1, br2, release'], // Placeholder, will be dynamically populated
+            choices: ['Loading...'], // Placeholder, will be dynamically populated
             description: 'Select Git Branch Name'
         )
         
         choice(
             name: 'COMMIT_ID',
-            choices: ['a983957,2f9d7e9,152a6f3,9b96c86'], // Placeholder, will be dynamically populated based on selected branch
+            choices: ['Loading...'], // Placeholder, will be dynamically populated based on selected branch
             description: 'Select Commit ID'
         )
     }
@@ -26,29 +26,22 @@ pipeline {
             steps {
                 script {
                     // Populate Branches
-                    def branches = getBranches(params.GIT_REPO)
-                    BRANCH_NAME = branches.size() > 0 ? branches[0] : 'No branches found'
-                    
-                    // Populate Commit IDs based on selected branch
-                    if (branches.size() > 0) {
-                        def commits = getCommits(params.GIT_REPO, BRANCH_NAME)
-                        COMMIT_ID = commits.size() > 0 ? commits[0] : 'No commits found'
-                    } else {
-                        COMMIT_ID = 'No commits found'
-                    }
+                    def branches = getBranches(GIT_REPO)
+                    BRANCH_NAME = branches[0] // Set default to first branch
                 }
             }
         }
-        stage('Display Branches') {
-            steps {
-                echo "Available branches:"
-                echo BRANCH_NAME
+        stage('Fetch Commits') {
+            when {
+                expression {
+                    return BRANCH_NAME != 'Loading...'
+                }
             }
-        }
-        stage('Display Commit IDs') {
             steps {
-                echo "Latest 5 commit IDs for branch ${BRANCH_NAME}:"
-                echo COMMIT_ID
+                script {
+                    // Populate Commit IDs based on selected branch
+                    COMMIT_ID = getCommits(GIT_REPO, BRANCH_NAME)[0] // Set default to first commit
+                }
             }
         }
         stage('Build') {
@@ -61,9 +54,27 @@ pipeline {
 }
 
 def getBranches(repo) {
-    // Implement getBranches method
+    def gitRepo = repo.tokenize('/')[3..-1].join('/')
+    def branches = []
+    def proc = "git ls-remote --heads https://github.com/${gitRepo}".execute()
+    proc.waitFor()
+    proc.in.eachLine { line ->
+        def branch = line.split()[1].replaceAll('refs/heads/', '')
+        branches << branch
+    }
+    return branches
 }
 
 def getCommits(repo, branch) {
-    // Implement getCommits method
+    def gitRepo = repo.tokenize('/')[3..-1].join('/')
+    def commits = []
+    if (branch) {
+        def proc = "git ls-remote https://github.com/${gitRepo} refs/heads/${branch}".execute()
+        proc.waitFor()
+        proc.in.eachLine { line ->
+            def commitId = line.split()[0]
+            commits << commitId
+        }
+    }
+    return commits.take(5) // Get only the latest 5 commits
 }
