@@ -1,94 +1,52 @@
 pipeline {
     agent any
-
+ 
     stages {
-        stage('Checkout') {
+        stage('Fetch Branches') {
             steps {
                 script {
-                    // Fetch the list of repositories from your Git hosting provider
-                    // For this example, we will use GitHub and assume you have a GitHub personal access token stored securely in the environment
-                    def fetchRepositories = {
-                        def token = System.getenv("GITHUB_TOKEN")
-                        def username = "your-github-username" // Replace with your GitHub username
-                        def url = "https://api.github.com/users/${username}/repos"
-                        def connection = new URL(url).openConnection()
-                        connection.setRequestProperty("Authorization", "token ${token}")
-                        def response = connection.inputStream.text
-                        def repos = new groovy.json.JsonSlurper().parseText(response)
-                        return repos.collect { it.name }
+                    def branches = sh(returnStdout: true, script: 'https://github.com/GUMMASAISINDHU/ecommerce-website').trim().split('\n')
+                    def branchList = []
+                    branches.each { branch ->
+                        def branchName = branch.split()[1].replace('refs/heads/', '')
+                        branchList << branchName
                     }
-                    
-                    // Get the list of repositories
-                    def repositoryChoices = fetchRepositories()
-
-                    // Prompt the user to select a repository
-                    def selectedRepository = input(
-                        message: 'Please select a repository:',
-                        parameters: [
-                            choice(
-                                name: 'repository',
-                                choices: repositoryChoices.join("\n"),
-                                description: 'Select a repository to view commits from:'
-                            )
-                        ]
-                    )
-
-                    // Change the current working directory to the repository
-                    sh "git remote set-url origin https://github.com/your-github-username/${selectedRepository}.git"
-                    sh "git fetch"
-                    
-                    // Get the last 5 commits and their short hashes from the selected repository
-                    def lastFiveCommits = sh(
-                        script: "git log -5 --pretty=format:'%h %s'",
-                        returnStdout: true
-                    ).trim().split("\n")
-
-                    // Parse the list of commits to display to the user
-                    def commitChoices = lastFiveCommits.collect { line ->
-                        def (commitId, commitMessage) = line.split(' ', 2)
-                        return "${commitId} - ${commitMessage}"
-                    }
-
-                    // Prompt the user to select one of the last 5 commits from the chosen repository
-                    def chosenCommit = input(
-                        message: 'Please select a commit to run the pipeline on:',
-                        parameters: [
-                            choice(
-                                name: 'commit',
-                                choices: commitChoices.join("\n"),
-                                description: 'Select a commit ID to build:'
-                            )
-                        ]
-                    )
-
-                    // Extract the commit ID from the chosen option
-                    def commitId = chosenCommit.split(' ')[0]
-
-                    // Checkout the chosen commit from the selected repository
-                    sh "git checkout ${commitId}"
+                    echo "Branches: ${branchList.join(', ')}"
                 }
             }
         }
-        
-        stage('Build') {
+ 
+        stage('Fetch Commit IDs') {
             steps {
-                sh '''
-                mvn package
-                '''
-            }
-            post {
-                success {
-                    echo "Archiving the Artifacts"
-                    archiveArtifacts artifacts: '**/target/*.war'
+                script {
+                    def branches = sh(returnStdout: true, script: 'https://github.com/GUMMASAISINDHU/ecommerce-website').trim().split('\n')
+                    def commitMap = [:]
+                    branches.each { branch ->
+                        def parts = branch.split()
+                        def commitId = parts[0]
+                        def branchName = parts[1].replace('refs/heads/', '')
+                        commitMap[branchName] = commitId
+                    }
+                    echo "Branch Commit Map: ${commitMap}"
                 }
             }
         }
-        
-        stage('Deploy to Tomcat Server') {
+ 
+        stage('Build Branches') {
             steps {
-                deploy adapters: [tomcat7(credentialsId: '53f6d854-6d94-49d0-8b3b-a1ad7ce25f4a', path: '', url: 'http://34.224.38.174:8080/')], contextPath: null, war: '**/*.war'
+                script {
+                    def branches = sh(returnStdout: true, script: 'https://github.com/GUMMASAISINDHU/ecommerce-website').trim().split('\n')
+                    branches.each { branch ->
+                        def branchName = branch.split()[1].replace('refs/heads/', '')
+                        build job: 'YourJobName', parameters: [string(name: 'BRANCH_NAME', value: branchName)]
+                    }
+                }
             }
         }
     }
 }
 
+has context menu
+
+
+has context menu
