@@ -1,43 +1,36 @@
-pipeline {
-    agent any
-    parameters {
-        // Define a parameter for selecting the branch
-        choice(
-            name: 'BRANCH',
-            choices: ['main', 'br1', 'develop', 'release'],
-            description: 'Select the branch to build'
-        )
-        // Define a parameter for entering commit IDs
-        text(
-            name: 'COMMIT_ID',
-            defaultValue: '',
-            description: 'Enter the commit IDs (separated by comma)'
-        )
+import jenkins.model.*
+import hudson.plugins.git.*
+import hudson.model.*
+import org.eclipse.jgit.api.Git
+ 
+def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website"
+ 
+// Temporary directory for cloning
+def tempDir = File.createTempFile("tempRepo", "")
+tempDir.delete()
+tempDir.mkdir()
+ 
+def branches = []
+ 
+try {
+    // Clone the repository
+    def git = Git.cloneRepository()
+        .setURI(gitUrl)
+        .setDirectory(tempDir)
+        .call()
+ 
+    // List branches
+    def branchList = git.branchList().call()
+    branchList.each {
+        branches << it.getName().replace("refs/heads/", "")
     }
-    stages {
-        stage('Checkout') {
-            steps {
-                // Checkout the selected branch
-                script {
-                    checkout([$class: 'GitSCM', branches: [[name: "*/${params.BRANCH}"]], userRemoteConfigs: [[url: '
-https://github.com/GUMMASAISINDHU/ecommerce-website/']]])
-                }
-            }
-        }
-        stage('Build') {
-            steps {
-                // Build your project
-                sh 'mvn clean install'
-            }
-        }
-        stage('Deploy') {
-            when {
-                branch 'master'
-            }
-            steps {
-                // Deploy your project
-                sh 'mvn deploy'
-            }
-        }
-    }
+ 
+    git.close()
+} catch (Exception e) {
+    println("Error: " + e.getMessage())
+} finally {
+    // Clean up
+    tempDir.deleteDir()
 }
+ 
+return branches   
