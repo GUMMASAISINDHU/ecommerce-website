@@ -1,36 +1,36 @@
-import jenkins.model.*
-import hudson.plugins.git.*
-import hudson.model.*
-import org.eclipse.jgit.api.Git
- 
-def gitUrl = "https://github.com/GUMMASAISINDHU/ecommerce-website"
- 
-// Temporary directory for cloning
-def tempDir = File.createTempFile("tempRepo", "")
-tempDir.delete()
-tempDir.mkdir()
- 
-def branches = []
- 
-try {
-    // Clone the repository
-    def git = Git.cloneRepository()
-        .setURI(gitUrl)
-        .setDirectory(tempDir)
-        .call()
- 
-    // List branches
-    def branchList = git.branchList().call()
-    branchList.each {
-        branches << it.getName().replace("refs/heads/", "")
+pipeline {
+    agent any
+    parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Commit ID to build (leave empty for latest commit on branch)')
     }
- 
-    git.close()
-} catch (Exception e) {
-    println("Error: " + e.getMessage())
-} finally {
-    // Clean up
-    tempDir.deleteDir()
-}
- 
-return branches   
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    def branch = params.BRANCH
+                    def commitId = params.COMMIT_ID
+
+                    // Checkout the specified branch
+                    checkout([$class: 'GitSCM',
+                              branches: [[name: branch]],
+                              doGenerateSubmoduleConfigurations: false,
+                              extensions: [],
+                              userRemoteConfigs: [[url: 'https://github.com/GUMMASAISINDHU/ecommerce-website']]])
+
+                    // If a commit ID is specified, check it out
+                    if (commitId) {
+                        sh "git checkout ${commitId}"
+                    }
+                }
+            }
+        }
+        stage('Display Code') {
+            steps {
+                script {
+                    // Display the current commit ID
+                    sh 'git rev-parse HEAD'
+                    // Display the code (example for a simple text file)
+                    sh 'cat path/to/your/code/file'
+                }
+   
